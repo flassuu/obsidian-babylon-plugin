@@ -141,7 +141,12 @@ export default class BabylonPlugin extends Plugin {
 
 	updateAnilistProvider(): void {
 		this.anilistProvider.setAccessToken(this.settings.anilistAuth.accessToken);
-		this.anilistProvider.setCustomFields(this.settings.anilistAuth.customFields);
+		const combined = [
+			this.settings.anilistAuth.customFieldsPublic,
+			this.settings.anilistAuth.customFieldsPrivate,
+			this.settings.anilistAuth.customFields,
+		].filter(Boolean).join('\n');
+		this.anilistProvider.setCustomFields(combined);
 	}
 
 	private pickTypeAndAdd(): void {

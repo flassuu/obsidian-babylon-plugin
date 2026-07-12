@@ -12,6 +12,27 @@ export const DEFAULT_SETTINGS: BabylonSettings = {
 		personalizationEnabled: false,
 		accessToken: '',
 		customFields: '',
+		customFieldsPublic: `type
+genres
+format
+status
+episodes
+seasonYear
+averageScore
+meanScore
+duration
+season
+source
+synonyms
+trending
+popularity`,
+		customFieldsPrivate: `progress
+score
+startedAt
+completedAt
+notes
+repeat
+priority`,
 	},
 	anilistSync: {
 		enabled: false,
@@ -34,6 +55,18 @@ export const DEFAULT_SETTINGS: BabylonSettings = {
 		series: {
 			enabled: false,
 			folder: 'Content/Series',
+			provider: null,
+			templatePath: '',
+		},
+		game: {
+			enabled: false,
+			folder: 'Content/Games',
+			provider: null,
+			templatePath: '',
+		},
+		book: {
+			enabled: false,
+			folder: 'Content/Books',
 			provider: null,
 			templatePath: '',
 		},

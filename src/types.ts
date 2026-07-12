@@ -17,6 +17,8 @@ export interface AnilistAuthSettings {
 	personalizationEnabled: boolean;
 	accessToken: string;
 	customFields: string;
+	customFieldsPublic: string;
+	customFieldsPrivate: string;
 }
 
 export interface AnilistSyncSettings {
