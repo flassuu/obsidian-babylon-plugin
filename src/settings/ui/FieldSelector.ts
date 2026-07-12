@@ -1,4 +1,4 @@
-import { Setting, setIcon } from 'obsidian';
+import { setIcon } from 'obsidian';
 import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import type { MediaType } from '../../types';
@@ -42,6 +42,22 @@ export class FieldSelector {
 		await this.save();
 	}
 
+	private async selectCategory(categoryId: string, select: boolean): Promise<void> {
+		const byCategory = getFieldsByCategory(this.mediaType);
+		const fields = byCategory.get(categoryId) ?? [];
+		for (const f of fields) {
+			const disabled = f.personal && !this.personalEnabled;
+			if (disabled) continue;
+			if (select) {
+				this.selected.add(f.key);
+			} else {
+				this.selected.delete(f.key);
+			}
+		}
+		await this.save();
+		this.render();
+	}
+
 	private async save(): Promise<void> {
 		const settings = this.plugin.settings.media[this.mediaType];
 		if (settings) {
@@ -83,9 +99,29 @@ export class FieldSelector {
 			details.open = true;
 
 			const summary = details.createEl('summary');
+			summary.addClass('babylon-field-summary');
 			const iconSpan = summary.createSpan({ cls: 'babylon-field-cat-icon' });
 			setIcon(iconSpan, cat.icon);
 			summary.createSpan({ text: tr(cat.labelKey) });
+
+			// select-all / deselect-all buttons
+			const btnGroup = summary.createSpan({ cls: 'babylon-field-cat-actions' });
+			const selectAllBtn = btnGroup.createEl('button', {
+				cls: 'babylon-cat-btn',
+				text: tr('field-select-all'),
+			});
+			selectAllBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				void this.selectCategory(cat.id, true);
+			});
+			const deselectBtn = btnGroup.createEl('button', {
+				cls: 'babylon-cat-btn',
+				text: tr('field-deselect-all'),
+			});
+			deselectBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				void this.selectCategory(cat.id, false);
+			});
 
 			const grid = details.createDiv({ cls: 'babylon-field-grid' });
 
@@ -107,33 +143,5 @@ export class FieldSelector {
 				label.createSpan({ text: tr(field.labelKey) });
 			}
 		}
-
-		// Custom fields input
-		const customSection = this.containerEl.createDiv({ cls: 'babylon-custom-fields-section' });
-		customSection.createEl('h4', { text: 'Custom fields' });
-
-		if (this.customFields.length > 0) {
-			const tagContainer = customSection.createDiv({ cls: 'babylon-custom-tags' });
-			for (const name of this.customFields) {
-				const tag = tagContainer.createSpan({ cls: 'babylon-custom-tag' });
-				tag.createSpan({ text: name });
-				const removeBtn = tag.createSpan({ cls: 'babylon-custom-tag-remove' });
-				removeBtn.textContent = '\u00D7';
-				removeBtn.addEventListener('click', () => {
-					void this.removeCustomField(name);
-				});
-			}
-		}
-
-		new Setting(customSection)
-			.addText((text) => {
-				text.setPlaceholder(tr('field-custom-placeholder'));
-				text.inputEl.addEventListener('keydown', (e) => {
-					if (e.key === 'Enter') {
-						void this.addCustomField(text.getValue());
-						text.setValue('');
-					}
-				});
-			});
 	}
 }

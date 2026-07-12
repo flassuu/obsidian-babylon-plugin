@@ -163,8 +163,56 @@
 	flex-shrink: 0;
 }
 
+/* Template Manager */
+.babylon-tmpl-manager {
+	margin: 12px 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-primary);
+	overflow: hidden;
+}
+
+.babylon-tmpl-summary {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	cursor: pointer;
+	font-weight: 700;
+	font-size: 0.95em;
+	color: var(--text-normal);
+	background: var(--background-secondary);
+	user-select: none;
+}
+
+.babylon-tmpl-summary:hover {
+	background: var(--background-modifier-hover);
+}
+
+.babylon-tmpl-body {
+	padding: 12px 14px;
+}
+
+.babylon-tmpl-desc {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin: 0 0 12px;
+	line-height: 1.5;
+}
+
+.babylon-tmpl-wiki {
+	color: var(--text-accent);
+	text-decoration: none;
+	font-weight: 500;
+}
+
+.babylon-tmpl-wiki:hover {
+	text-decoration: underline;
+}
+
+/* Field Selector */
 .babylon-field-selector {
-	margin: 8px 0 16px;
+	margin: 0 0 12px;
 }
 
 .babylon-field-selector details {
@@ -178,11 +226,11 @@
 	background: var(--background-primary);
 }
 
-.babylon-field-selector summary {
-	display: flex;
+.babylon-field-summary {
+	display: flex !important;
 	align-items: center;
 	gap: 6px;
-	padding: 8px 12px;
+	padding: 7px 10px;
 	cursor: pointer;
 	font-weight: 600;
 	font-size: 0.85em;
@@ -191,21 +239,43 @@
 	user-select: none;
 }
 
-.babylon-field-selector summary:hover {
+.babylon-field-summary:hover {
 	background: var(--background-modifier-hover);
 }
 
-.babylon-field-selector summary .babylon-field-cat-icon {
+.babylon-field-cat-icon {
 	display: inline-flex;
 	align-items: center;
 	color: var(--text-muted);
+}
+
+.babylon-field-cat-actions {
+	margin-left: auto;
+	display: flex;
+	gap: 4px;
+}
+
+.babylon-cat-btn {
+	background: none;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 1px 8px;
+	font-size: 0.75em;
+	cursor: pointer;
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.babylon-cat-btn:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
 }
 
 .babylon-field-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 	gap: 2px;
-	padding: 6px 12px 10px;
+	padding: 6px 10px 10px;
 }
 
 .babylon-field-item {
@@ -235,21 +305,27 @@
 	pointer-events: none;
 }
 
-.babylon-field-disabled input[type="checkbox"] {
-	opacity: 0.5;
-}
-
+/* Custom fields */
 .babylon-custom-fields-section {
-	margin-top: 8px;
-	padding: 8px 12px;
+	margin-top: 12px;
+	padding: 10px 12px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 6px;
+	background: var(--background-primary);
 }
 
 .babylon-custom-fields-section h4 {
-	margin: 0 0 6px;
-	font-size: 0.85em;
+	margin: 0 0 4px;
+	font-size: 0.9em;
+	color: var(--text-normal);
+	font-weight: 600;
+}
+
+.babylon-tmpl-custom-desc {
+	font-size: 0.82em;
 	color: var(--text-muted);
+	margin: 0 0 8px;
+	line-height: 1.4;
 }
 
 .babylon-custom-tags {
@@ -281,6 +357,4 @@
 	color: var(--text-accent);
 }
 
-.babylon-folder-input {
-	flex: 1;
-}
+
