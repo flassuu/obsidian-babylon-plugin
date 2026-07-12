@@ -24,3 +24,6 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# AI agent instructions (not part of plugin source)
+AGENTS.md

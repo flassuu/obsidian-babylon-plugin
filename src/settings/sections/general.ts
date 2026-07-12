@@ -2,6 +2,7 @@ import { Setting } from 'obsidian';
 import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import type { SupportedLocale } from '../../types';
+import { addFolderPicker } from '../ui/FolderPicker';
 
 export function createGeneralSection(
 	containerEl: HTMLElement,
@@ -21,4 +22,18 @@ export function createGeneralSection(
 					await plugin.saveSettings();
 				});
 		});
+
+	const templateFolderSetting = new Setting(containerEl)
+		.setName(tr('settings-template-folder'))
+		.setDesc(tr('settings-template-folder-desc'));
+
+	addFolderPicker(
+		templateFolderSetting,
+		plugin.app,
+		plugin.settings.templateFolder,
+		(value) => {
+			plugin.settings.templateFolder = value;
+			void plugin.saveSettings();
+		},
+	);
 }

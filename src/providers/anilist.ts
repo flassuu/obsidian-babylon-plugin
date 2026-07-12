@@ -1,10 +1,12 @@
 import type { ContentProvider, MediaDetails, MediaType, ProviderId, SearchResult } from '../types';
 import { fetchJson } from '../utils/fetcher';
 import { stripHtml } from '../utils/sanitize';
+import { getFields } from '../fields/FieldRegistry';
 
 const ANILIST_API = 'https://graphql.anilist.co';
 
-const BASE_SEARCH_FIELDS = `
+// fields always needed for search results
+const SEARCH_GRAPHQL = `
   id
   title { romaji english native }
   coverImage { large }
@@ -18,71 +20,28 @@ const BASE_SEARCH_FIELDS = `
   status
 `.trim();
 
-const BASE_DETAIL_FIELDS = `
+// fields always needed for detail result (core rendering)
+const ALWAYS_DETAIL_GRAPHQL = `
   id
-  idMal
   title { romaji english native }
   coverImage { extraLarge large medium color }
-  bannerImage
   seasonYear
-  season
   format
-  status
   episodes
-  duration
-  description
   averageScore
-  meanScore
-  popularity
-  favourites
   genres
-  tags { id name description category rank isAdult }
-  synonyms
-  source(version: 3)
-  countryOfOrigin
-  isAdult
-  hashtag
-  trailer { id site thumbnail }
-  studios (isMain: true) { nodes { id name } }
-  externalLinks { id url site }
-  streamingEpisodes { title url site }
-  rankings { id rank type format year season allTime context }
+  description
   siteUrl
-  updatedAt
+  status
 `.trim();
 
-function buildSearchQuery(extraFields: string): string {
-	const extra = extraFields ? `\n    ${extraFields}` : '';
-	return `
+const SELF_QUERY = 'query ($id: Int) { Media(id: $id) {';
+
+const SEARCH_QUERY_HEAD = `
 query ($search: String, $page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
     media(search: $search, type: ANIME) {
-      ${BASE_SEARCH_FIELDS}${extra}
-    }
-  }
-}`;
-}
-
-function buildDetailQuery(extraFields: string): string {
-	const extra = extraFields ? `\n    ${extraFields}` : '';
-	return `
-query ($id: Int) {
-  Media(id: $id) {
-    ${BASE_DETAIL_FIELDS}${extra}
-    mediaListEntry {
-      id
-      status
-      score
-      progress
-      progressVolumes
-      repeat
-      notes
-      startedAt { year month day }
-      completedAt { year month day }
-    }
-  }
-}`;
-}
+`.trim();
 
 function pickTitle(title: { romaji?: string; english?: string; native?: string }): string {
 	return title.english ?? title.romaji ?? title.native ?? 'Unknown';
@@ -97,11 +56,13 @@ export class AnilistProvider implements ContentProvider {
 	mediaTypes: MediaType[] = ['anime'];
 	requiresKey = false;
 
-	private customFields = '';
+	private requestedFields: string[] = [];
+	private hasToken = false;
 	private accessToken = '';
 
-	setCustomFields(fields: string): void {
-		this.customFields = fields.trim();
+	setRequestedFields(fields: string[], hasToken: boolean): void {
+		this.requestedFields = fields;
+		this.hasToken = hasToken;
 	}
 
 	setAccessToken(token: string): void {
@@ -112,8 +73,58 @@ export class AnilistProvider implements ContentProvider {
 		return this.accessToken || undefined;
 	}
 
+	private getSelectedGraphQLFragments(): string[] {
+		const allDefs = getFields('anime');
+		const fragments: string[] = [];
+		const handled = new Set<string>();
+
+		for (const key of this.requestedFields) {
+			const def = allDefs.find((f) => f.key === key);
+			if (def && def.graphql && !handled.has(def.graphql)) {
+				fragments.push(def.graphql);
+				handled.add(def.graphql);
+			} else if (!def) {
+				// custom field name — use as-is (assumed top-level simple field)
+				const simple = key.replace(/[^a-zA-Z0-9_]/g, '');
+				if (simple && !handled.has(simple)) {
+					fragments.push(simple);
+					handled.add(simple);
+				}
+			}
+		}
+
+		return fragments;
+	}
+
+	private needsMediaListEntry(): boolean {
+		if (!this.hasToken) return false;
+		const personalKeys = ['progress', 'score', 'myStatus', 'startedAt', 'completedAt', 'notes', 'repeat', 'progressVolumes'];
+		return this.requestedFields.some((k) => personalKeys.includes(k));
+	}
+
+	private buildMediaListEntryFragment(): string {
+		return `mediaListEntry {
+      id
+      status
+      score
+      progress
+      progressVolumes
+      repeat
+      notes
+      startedAt { year month day }
+      completedAt { year month day }
+    }`;
+	}
+
 	async search(query: string): Promise<SearchResult[]> {
-		const q = buildSearchQuery(this.customFields);
+		const extraFragments = this.getSelectedGraphQLFragments();
+		const extra = extraFragments.length > 0 ? `\n    ${extraFragments.join('\n    ')}` : '';
+
+		const q = `${SEARCH_QUERY_HEAD}${SEARCH_GRAPHQL}${extra}
+    }
+  }
+}`;
+
 		const data = await fetchJson(ANILIST_API, 'POST', JSON.stringify({
 			query: q,
 			variables: { search: query, page: 1, perPage: 20 },
@@ -139,7 +150,15 @@ export class AnilistProvider implements ContentProvider {
 			? (raw as Record<string, unknown>)['id']
 			: parseInt(sourceId, 10);
 
-		const q = buildDetailQuery(this.customFields);
+		const extraFragments = this.getSelectedGraphQLFragments();
+		const mleFragment = this.needsMediaListEntry() ? `\n    ${this.buildMediaListEntryFragment()}` : '';
+		const extra = extraFragments.length > 0 ? `\n    ${extraFragments.join('\n    ')}` : '';
+
+		const q = `${SELF_QUERY}
+    ${ALWAYS_DETAIL_GRAPHQL}${extra}${mleFragment}
+  }
+}`;
+
 		const data = await fetchJson(ANILIST_API, 'POST', JSON.stringify({
 			query: q,
 			variables: { id },
@@ -169,9 +188,10 @@ export class AnilistProvider implements ContentProvider {
 			provider: 'anilist',
 		};
 
+		// flatten remaining fields into details for template use
 		const extraKeys = [
-			'id', 'idMal', 'type', 'status', 'season', 'duration',
-			'bannerImage', 'averageScore', 'meanScore', 'popularity', 'favourites',
+			'id', 'status', 'season', 'duration',
+			'bannerImage', 'meanScore', 'popularity', 'favourites',
 			'hashtag', 'countryOfOrigin', 'isAdult', 'source', 'synonyms', 'updatedAt',
 		];
 		for (const key of extraKeys) {
@@ -182,7 +202,7 @@ export class AnilistProvider implements ContentProvider {
 
 		const tags = media['tags'] as Array<Record<string, unknown>> | undefined;
 		if (tags) {
-			details['tagNames'] = tags.map((t) => t['name']).filter(Boolean).join(', ');
+			details['tags'] = tags.map((t) => t['name']).filter(Boolean).join(', ');
 		}
 
 		const coverImg = media['coverImage'] as Record<string, unknown> | undefined;
@@ -192,16 +212,27 @@ export class AnilistProvider implements ContentProvider {
 			details['coverColor'] = coverImg['color'] ?? null;
 		}
 
-		if (this.customFields) {
-			const fieldNames = this.customFields
-				.split('\n')
-				.map((f) => f.trim())
-				.filter((f) => f.length > 0 && !f.includes('{'));
-			for (const field of fieldNames) {
-				const simpleName = field.replace(/[^a-zA-Z0-9_]/g, '');
-				if (simpleName && media[simpleName] !== undefined) {
-					details[simpleName] = media[simpleName];
-				}
+		// flatten mediaListEntry into top-level details
+		const mle = media['mediaListEntry'] as Record<string, unknown> | undefined;
+		if (mle) {
+			details['progress'] = mle['progress'] ?? null;
+			details['score'] = mle['score'] ?? null;
+			details['myStatus'] = mle['status'] ?? null;
+			details['repeat'] = mle['repeat'] ?? null;
+			details['notes'] = mle['notes'] ?? null;
+			details['progressVolumes'] = mle['progressVolumes'] ?? null;
+
+			const sa = mle['startedAt'] as Record<string, unknown> | undefined;
+			if (sa) details['startedAt'] = sa;
+			const ca = mle['completedAt'] as Record<string, unknown> | undefined;
+			if (ca) details['completedAt'] = ca;
+		}
+
+		// extra requested custom fields from media directly
+		for (const key of this.requestedFields) {
+			const simpleName = key.replace(/[^a-zA-Z0-9_]/g, '');
+			if (simpleName && details[simpleName] === undefined && media[simpleName] !== undefined) {
+				details[simpleName] = media[simpleName];
 			}
 		}
 

@@ -3,6 +3,9 @@ import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import { getAnilistAuthUrl, testAnilistToken } from '../../utils/fetcher';
 import { normalizePath } from './media';
+import { FieldSelector } from '../ui/FieldSelector';
+import { GenerateTemplateModal } from '../ui/GenerateTemplateModal';
+import { addFolderPicker } from '../ui/FolderPicker';
 
 const CLIENT_ID = '45744';
 
@@ -113,55 +116,66 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 		});
 }
 
-function createFieldsUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
-	const personalizationOn = plugin.settings.anilistAuth.personalizationEnabled;
+function createTemplateSection(containerEl: HTMLElement, plugin: BabylonPlugin): void {
+	const animeSettings = plugin.settings.media.anime;
+	if (!animeSettings) return;
 
-	containerEl.createEl('h4', { text: tr('settings-anilist-fields-public') });
+	const app = plugin.app;
 
 	new Setting(containerEl)
-		.setDesc(tr('settings-anilist-fields-public-desc'))
-		.addTextArea((text) => {
-			text.setPlaceholder(tr('settings-anilist-fields-placeholder'));
-			text.setValue(plugin.settings.anilistAuth.customFieldsPublic);
-			text.inputEl.rows = 8;
-			text.inputEl.cols = 40;
-			text.inputEl.addClass('babylon-monospace-input');
-			text.onChange(async (value) => {
-				plugin.settings.anilistAuth.customFieldsPublic = value;
-				await plugin.saveSettings();
-				plugin.updateAnilistProvider();
-			});
+		.setName(tr('settings-template-mode'))
+		.addDropdown((dropdown) => {
+			dropdown
+				.addOption('simple', tr('settings-template-mode-simple'))
+				.addOption('advanced', tr('settings-template-mode-advanced'))
+				.setValue(animeSettings.templateMode)
+				.onChange(async (value) => {
+					animeSettings.templateMode = value as 'simple' | 'advanced';
+					await plugin.saveSettings();
+					plugin.settingsTab.display();
+				});
 		});
 
-	containerEl.createEl('h4', { text: tr('settings-anilist-fields-private') });
-
-	const privateSetting = new Setting(containerEl)
-		.setDesc(tr('settings-anilist-fields-private-desc'))
-		.addTextArea((text) => {
-			text.setPlaceholder(tr('settings-anilist-fields-placeholder'));
-			text.setValue(plugin.settings.anilistAuth.customFieldsPrivate);
-			text.inputEl.rows = 6;
-			text.inputEl.cols = 40;
-			text.inputEl.addClass('babylon-monospace-input');
-			if (!personalizationOn) {
-				text.inputEl.disabled = true;
-			}
-			text.onChange(async (value) => {
-				plugin.settings.anilistAuth.customFieldsPrivate = value;
-				await plugin.saveSettings();
-				plugin.updateAnilistProvider();
+	if (animeSettings.templateMode === 'simple') {
+		// Field selector
+		const fieldContainer = containerEl.createDiv({ cls: 'babylon-field-selector' });
+		{
+			const personalOn = plugin.settings.anilistAuth.personalizationEnabled;
+			new FieldSelector(plugin, 'anime', fieldContainer, personalOn, () => {
+				// nothing extra
 			});
-		});
+		}
 
-	if (!personalizationOn) {
-		privateSetting.setDesc(tr('settings-anilist-fields-private-disabled'));
+		// Generate template button
+		new Setting(containerEl)
+			.setName(tr('settings-generate-template'))
+			.setDesc(tr('settings-generate-template-desc'))
+			.addButton((btn) => {
+				btn.setButtonText(tr('gen-template-generate'));
+				btn.setCta();
+				btn.onClick(() => {
+					new GenerateTemplateModal(plugin, 'anime').open();
+				});
+			});
+	} else {
+		new Setting(containerEl)
+			.setName(tr('settings-template'))
+			.setDesc(tr('settings-template-desc'))
+			.addText((text) =>
+				text
+					.setPlaceholder('TEMPLATES/anime-template.md')
+					.setValue(animeSettings.templatePath)
+					.onChange(async (value) => {
+						animeSettings.templatePath = normalizePath(app, value);
+						await plugin.saveSettings();
+					}),
+			);
 	}
 }
 
 export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 	const animeSettings = plugin.settings.media.anime;
 	const personalizationOn = plugin.settings.anilistAuth.personalizationEnabled;
-	const app = plugin.app;
 
 	new Setting(containerEl)
 		.setName(tr('settings-provider'))
@@ -194,32 +208,20 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 	}
 
 	if (animeSettings) {
-		new Setting(containerEl)
+		const folderSetting = new Setting(containerEl)
 			.setName(tr('settings-folder'))
-			.setDesc(tr('settings-folder-desc'))
-			.addText((text) =>
-				text
-					.setPlaceholder('Content/Anime')
-					.setValue(animeSettings.folder)
-					.onChange(async (value) => {
-						animeSettings.folder = value;
-						await plugin.saveSettings();
-					}),
-			);
+			.setDesc(tr('settings-folder-desc'));
 
-		new Setting(containerEl)
-			.setName(tr('settings-template'))
-			.setDesc(tr('settings-template-desc'))
-			.addText((text) =>
-				text
-					.setPlaceholder('TEMPLATES/anime-template.md')
-					.setValue(animeSettings.templatePath)
-					.onChange(async (value) => {
-						animeSettings.templatePath = normalizePath(app, value);
-						await plugin.saveSettings();
-					}),
-			);
+		addFolderPicker(
+			folderSetting,
+			plugin.app,
+			animeSettings.folder,
+			(value) => {
+				animeSettings.folder = value;
+				void plugin.saveSettings();
+			},
+		);
+
+		createTemplateSection(containerEl, plugin);
 	}
-
-	createFieldsUI(containerEl, plugin);
 }

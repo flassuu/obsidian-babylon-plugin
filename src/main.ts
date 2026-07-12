@@ -7,8 +7,9 @@ import { AnilistSyncService } from './services/AnilistSyncService';
 import { AddContentModal } from './ui/modals/AddContentModal';
 import { AddFromListModal } from './ui/modals/AddFromListModal';
 import { setLocale, tr } from './i18n';
-import { DEFAULT_SETTINGS } from './settings/defaults';
+import { DEFAULT_SETTINGS, migrateSettings } from './settings/defaults';
 import type { BabylonSettings, MediaType } from './types';
+import { initFields } from './fields';
 
 class TypePickerModal extends Modal {
 	constructor(
@@ -86,6 +87,7 @@ export default class BabylonPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		setLocale(this.settings.language);
+		initFields();
 
 		this.contentService = new ContentService(this.app);
 
@@ -128,11 +130,11 @@ export default class BabylonPlugin extends Plugin {
 	onunload(): void {}
 
 	async loadSettings(): Promise<void> {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<BabylonSettings>,
-		);
+		const data = (await this.loadData()) as Partial<BabylonSettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
+		if (data) {
+			migrateSettings(this.settings, data);
+		}
 	}
 
 	async saveSettings(): Promise<void> {
@@ -141,12 +143,13 @@ export default class BabylonPlugin extends Plugin {
 
 	updateAnilistProvider(): void {
 		this.anilistProvider.setAccessToken(this.settings.anilistAuth.accessToken);
-		const combined = [
-			this.settings.anilistAuth.customFieldsPublic,
-			this.settings.anilistAuth.customFieldsPrivate,
-			this.settings.anilistAuth.customFields,
-		].filter(Boolean).join('\n');
-		this.anilistProvider.setCustomFields(combined);
+		const animeSettings = this.settings.media.anime;
+		if (animeSettings) {
+			const selected = animeSettings.selectedFields ?? [];
+			const custom = animeSettings.customFieldNames ?? [];
+			const allKeys = [...selected, ...custom];
+			this.anilistProvider.setRequestedFields(allKeys, this.settings.anilistAuth.accessToken ? true : false);
+		}
 	}
 
 	private pickTypeAndAdd(): void {

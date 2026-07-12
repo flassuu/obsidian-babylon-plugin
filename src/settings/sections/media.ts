@@ -3,6 +3,7 @@ import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import type { MediaType } from '../../types';
 import { createAnimeSection } from './anilist';
+import { addFolderPicker } from '../ui/FolderPicker';
 
 const MEDIA_TYPES: { key: MediaType; labelKey: string }[] = [
 	{ key: 'anime', labelKey: 'settings-media-anime' },
@@ -23,13 +24,21 @@ export function normalizePath(app: App, input: string): string {
 }
 
 function ensureMediaSettings(plugin: BabylonPlugin, key: MediaType): void {
-	if (!plugin.settings.media[key]) {
+	const existing = plugin.settings.media[key];
+	if (!existing) {
 		plugin.settings.media[key] = {
 			enabled: key === 'anime',
 			folder: '',
 			provider: null,
 			templatePath: '',
+			selectedFields: [],
+			customFieldNames: [],
+			templateMode: 'simple',
 		};
+	} else {
+		if (!('selectedFields' in existing)) (existing as Record<string, unknown>).selectedFields = [];
+		if (!('customFieldNames' in existing)) (existing as Record<string, unknown>).customFieldNames = [];
+		if (!('templateMode' in existing)) (existing as Record<string, unknown>).templateMode = 'simple';
 	}
 }
 
@@ -42,18 +51,19 @@ function createBasicSettings(
 	if (!settings) return;
 	const app = plugin.app;
 
-	new Setting(section)
+	const folderSetting = new Setting(section)
 		.setName(tr('settings-folder'))
-		.setDesc(tr('settings-folder-desc'))
-		.addText((text) =>
-			text
-				.setPlaceholder('Content/' + key.charAt(0).toUpperCase() + key.slice(1))
-				.setValue(settings.folder)
-				.onChange(async (value) => {
-					settings.folder = value;
-					await plugin.saveSettings();
-				}),
-		);
+		.setDesc(tr('settings-folder-desc'));
+
+	addFolderPicker(
+		folderSetting,
+		plugin.app,
+		settings.folder,
+		(value) => {
+			settings.folder = value;
+			void plugin.saveSettings();
+		},
+	);
 
 	new Setting(section)
 		.setName(tr('settings-template'))

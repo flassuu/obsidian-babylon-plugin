@@ -11,6 +11,9 @@ export interface MediaTypeSettings {
 	folder: string;
 	provider: ProviderId | null;
 	templatePath: string;
+	selectedFields: string[];
+	customFieldNames: string[];
+	templateMode: TemplateMode;
 }
 
 export interface AnilistAuthSettings {
@@ -29,6 +32,7 @@ export interface AnilistSyncSettings {
 
 export interface BabylonSettings {
 	language: SupportedLocale;
+	templateFolder: string;
 	apiKeys: {
 		omdb: string;
 		rawg: string;
