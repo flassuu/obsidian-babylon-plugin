@@ -91,6 +91,7 @@ export function createMediaSection(
 		if (!settings) continue;
 
 		const section = containerEl.createDiv();
+		section.addClass('babylon-media-section');
 
 		new Setting(section)
 			.setName(tr(mt.labelKey))
@@ -100,17 +101,24 @@ export function createMediaSection(
 					.onChange(async (value) => {
 						settings.enabled = value;
 						await plugin.saveSettings();
-						plugin.settingsTab?.display();
+						// toggle sub-settings visibility instead of full re-render
+						const sub = section.querySelector('.babylon-media-sub');
+						if (sub instanceof HTMLElement) {
+							sub.toggleClass('babylon-media-hidden', !value);
+						}
 					}),
 			);
 
-		if (!settings.enabled) continue;
+		const subSection = section.createDiv({ cls: 'babylon-media-sub' });
+		if (!settings.enabled) {
+			subSection.addClass('babylon-media-hidden');
+		}
 
 		if (mt.key === 'anime') {
-			createAnimeSection(section, plugin);
+			createAnimeSection(subSection, plugin);
 		} else {
-			createBasicSettings(section, plugin, mt.key);
-			section.createEl('p', {
+			createBasicSettings(subSection, plugin, mt.key);
+			subSection.createEl('p', {
 				text: tr('settings-coming-soon'),
 				cls: 'setting-item-description',
 			});

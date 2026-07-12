@@ -15,6 +15,15 @@ export class BabylonSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
+
+		// save scroll position and details states before re-render
+		const scrollTop = containerEl.scrollTop;
+		const detailsStates = new Map<string, boolean>();
+		containerEl.querySelectorAll('details').forEach((el) => {
+			const key = el.textContent?.trim() ?? '';
+			detailsStates.set(key, el.open);
+		});
+
 		containerEl.empty();
 
 		setLocale(this.plugin.settings.language);
@@ -81,5 +90,15 @@ export class BabylonSettingTab extends PluginSettingTab {
 		createGeneralSection(containerEl, this.plugin);
 		createMediaSection(containerEl, this.plugin);
 		createApiSection(containerEl, this.plugin);
+
+		// restore scroll position and details states
+		containerEl.scrollTop = scrollTop;
+		containerEl.querySelectorAll('details').forEach((el) => {
+			const key = el.textContent?.trim() ?? '';
+			const wasOpen = detailsStates.get(key);
+			if (wasOpen !== undefined) {
+				el.open = wasOpen;
+			}
+		});
 	}
 }

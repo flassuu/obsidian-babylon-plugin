@@ -253,6 +253,8 @@
 	margin-left: auto;
 	display: flex;
 	align-items: center;
+	gap: 6px;
+	cursor: pointer;
 }
 
 .babylon-cat-select-all input[type="checkbox"] {
@@ -377,6 +379,10 @@
 
 .babylon-custom-tag-remove:hover {
 	color: var(--text-accent);
+}
+
+.babylon-media-hidden {
+	display: none;
 }
 
 

@@ -1,4 +1,4 @@
-import { Modal, Setting } from 'obsidian';
+import { App, FuzzySuggestModal, Modal, Setting } from 'obsidian';
 import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import { getAnilistAuthUrl, testAnilistToken } from '../../utils/fetcher';
@@ -149,7 +149,6 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 		.setName(tr('settings-tmpl-custom-fields'))
 		.setDesc(tr('settings-tmpl-custom-desc'));
 
-	// append wiki link to desc
 	const customDescEl = customFieldsSetting.descEl;
 	customDescEl.appendText(' ');
 	const wikiA = customDescEl.createEl('a', {
@@ -157,6 +156,31 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 		text: tr('settings-tmpl-wiki'),
 	});
 	wikiA.addClass('babylon-tmpl-wiki');
+
+	// tags container — we keep a reference for incremental updates
+	const tagContainer = body.createDiv({ cls: 'babylon-custom-tags' });
+	const s0 = animeSettings;
+	renderTags();
+
+	function renderTags(): void {
+		if (!s0) return;
+		tagContainer.empty();
+		const names = s0.customFieldNames ?? [];
+		if (names.length === 0) return;
+		for (const name of names) {
+			const tag = tagContainer.createSpan({ cls: 'babylon-custom-tag' });
+			tag.createSpan({ text: name });
+			const removeBtn = tag.createSpan({ cls: 'babylon-custom-tag-remove' });
+			removeBtn.textContent = '\u00D7';
+			removeBtn.addEventListener('click', () => {
+				s0.customFieldNames = s0.customFieldNames.filter((f) => f !== name);
+				s0.selectedFields = s0.selectedFields.filter((f) => f !== name);
+				void plugin.saveSettings();
+				plugin.updateAnilistProvider();
+				renderTags();
+			});
+		}
+	}
 
 	customFieldsSetting.addText((text) => {
 		text.setPlaceholder(tr('field-custom-example'));
@@ -190,25 +214,7 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 		}
 		void plugin.saveSettings();
 		plugin.updateAnilistProvider();
-		plugin.settingsTab.display();
-	}
-
-	const customFieldNames = animeSettings.customFieldNames ?? [];
-	if (customFieldNames.length > 0) {
-		const tagContainer = body.createDiv({ cls: 'babylon-custom-tags' });
-		for (const name of customFieldNames) {
-			const tag = tagContainer.createSpan({ cls: 'babylon-custom-tag' });
-			tag.createSpan({ text: name });
-			const removeBtn = tag.createSpan({ cls: 'babylon-custom-tag-remove' });
-			removeBtn.textContent = '\u00D7';
-			removeBtn.addEventListener('click', () => {
-				animeSettings.customFieldNames = animeSettings.customFieldNames.filter((f) => f !== name);
-				animeSettings.selectedFields = animeSettings.selectedFields.filter((f) => f !== name);
-				void plugin.saveSettings();
-				plugin.updateAnilistProvider();
-				plugin.settingsTab.display();
-			});
-		}
+		renderTags();
 	}
 
 	// Generate template button
@@ -221,12 +227,38 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 			btn.onClick(() => {
 				const modal = new GenerateTemplateModal(plugin, 'anime');
 				modal.onClose = () => {
-					// templatePath was already set inside modal, just refresh
-					plugin.settingsTab.display();
+					// templatePath was already set inside modal
+					// update the search input value in-place if it exists
+			const templateSearch = containerEl.querySelector('.babylon-template-search');
+				if (templateSearch instanceof HTMLInputElement) {
+					templateSearch.value = animeSettings?.templatePath ?? '';
+				}
 				};
 				modal.open();
 			});
 		});
+}
+
+class FileSuggestModal extends FuzzySuggestModal<string> {
+	private onSelect: (path: string) => void;
+
+	constructor(app: App, onSelect: (path: string) => void) {
+		super(app);
+		this.onSelect = onSelect;
+		this.setPlaceholder('Search template files...');
+	}
+
+	getItems(): string[] {
+		return this.app.vault.getMarkdownFiles().map((f) => f.path);
+	}
+
+	getItemText(item: string): string {
+		return item;
+	}
+
+	onChooseItem(item: string): void {
+		this.onSelect(item);
+	}
 }
 
 export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlugin): void {
@@ -297,14 +329,23 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 				void plugin.saveSettings();
 			});
 			search.inputEl.addClass('babylon-folder-input');
+			search.inputEl.addClass('babylon-template-search');
 		});
 
 		templateSetting.addButton((btn) => {
 			btn.setIcon('folder-open');
 			btn.setTooltip('Browse files');
 			btn.onClick(() => {
-				// Use a simple approach — let user type the path manually
-				// Obsidian doesn't have a built-in file picker modal
+				const modal = new FileSuggestModal(app, (path) => {
+					animeSettings.templatePath = path;
+					void plugin.saveSettings();
+					// update the search input in-place
+					const searchInput = templateSetting.settingEl.querySelector('.babylon-template-search');
+					if (searchInput instanceof HTMLInputElement) {
+						searchInput.value = path;
+					}
+				});
+				modal.open();
 			});
 		});
 
@@ -314,8 +355,13 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 			btn.onClick(() => {
 				animeSettings.templatePath = '';
 				void plugin.saveSettings();
-				plugin.settingsTab.display();
+				// update the search input in-place instead of full re-render
+				const searchInput = templateSetting.settingEl.querySelector('.babylon-template-search');
+				if (searchInput instanceof HTMLInputElement) {
+					searchInput.value = '';
+				}
 			});
 		});
 	}
+
 }

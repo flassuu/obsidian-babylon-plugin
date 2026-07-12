@@ -9,9 +9,13 @@ export class FieldSelector {
 	private mediaType: MediaType;
 	private containerEl: HTMLElement;
 	private selected: Set<string>;
-	private customFields: string[];
 	private personalEnabled: boolean;
 	private onChanged: () => void;
+
+	// DOM refs for incremental updates
+	private catCheckboxes: Map<string, HTMLInputElement> = new Map();
+	private fieldCheckboxes: Map<string, HTMLInputElement> = new Map();
+	private catGrids: Map<string, HTMLElement> = new Map();
 
 	constructor(
 		plugin: BabylonPlugin,
@@ -28,9 +32,12 @@ export class FieldSelector {
 
 		const settings = plugin.settings.media[mediaType];
 		this.selected = new Set(settings?.selectedFields ?? []);
-		this.customFields = settings?.customFieldNames ?? [];
 
 		this.render();
+	}
+
+	getSelected(): Set<string> {
+		return this.selected;
 	}
 
 	private async toggleField(key: string): Promise<void> {
@@ -39,7 +46,20 @@ export class FieldSelector {
 		} else {
 			this.selected.add(key);
 		}
+		// update the single checkbox immediately
+		const cb = this.fieldCheckboxes.get(key);
+		if (cb) cb.checked = this.selected.has(key);
+		const cat = this.findCategoryForField(key);
+		if (cat) this.updateSelectAll(cat);
 		await this.save();
+	}
+
+	private findCategoryForField(key: string): string | undefined {
+		const byCategory = getFieldsByCategory(this.mediaType);
+		for (const [catId, fields] of byCategory) {
+			if (fields.some((f) => f.key === key)) return catId;
+		}
+		return undefined;
 	}
 
 	private async selectCategory(categoryId: string, select: boolean): Promise<void> {
@@ -53,40 +73,39 @@ export class FieldSelector {
 			} else {
 				this.selected.delete(f.key);
 			}
+			const cb = this.fieldCheckboxes.get(f.key);
+			if (cb) cb.checked = this.selected.has(f.key);
 		}
+		this.updateSelectAll(categoryId);
 		await this.save();
-		this.render();
+	}
+
+	private updateSelectAll(categoryId: string): void {
+		const byCategory = getFieldsByCategory(this.mediaType);
+		const fields = byCategory.get(categoryId) ?? [];
+		const allSelected = fields.every((f) => {
+			const disabled = f.personal && !this.personalEnabled;
+			return disabled || this.selected.has(f.key);
+		});
+		const chk = this.catCheckboxes.get(categoryId);
+		if (chk) chk.checked = allSelected;
 	}
 
 	private async save(): Promise<void> {
 		const settings = this.plugin.settings.media[this.mediaType];
 		if (settings) {
 			settings.selectedFields = [...this.selected];
-			settings.customFieldNames = this.customFields;
 			await this.plugin.saveSettings();
 			this.plugin.updateAnilistProvider();
 		}
 		this.onChanged();
 	}
 
-	private async addCustomField(value: string): Promise<void> {
-		const name = value.trim();
-		if (!name || this.customFields.includes(name)) return;
-		this.customFields.push(name);
-		this.selected.add(name);
-		await this.save();
-		this.render();
-	}
-
-	private async removeCustomField(name: string): Promise<void> {
-		this.customFields = this.customFields.filter((f) => f !== name);
-		this.selected.delete(name);
-		await this.save();
-		this.render();
-	}
-
 	render(): void {
 		this.containerEl.empty();
+		this.catCheckboxes.clear();
+		this.fieldCheckboxes.clear();
+		this.catGrids.clear();
 
 		const categories = getCategories(this.mediaType);
 		const byCategory = getFieldsByCategory(this.mediaType);
@@ -104,12 +123,11 @@ export class FieldSelector {
 			setIcon(iconSpan, cat.icon);
 			summary.createSpan({ text: tr(cat.labelKey) });
 
-			// select-all checkbox
 			const allSelected = fields.every((f) => {
 				const disabled = f.personal && !this.personalEnabled;
 				return disabled || this.selected.has(f.key);
 			});
-			const chkLabel = summary.createSpan({ cls: 'babylon-cat-select-all' });
+			const chkLabel = summary.createEl('label', { cls: 'babylon-cat-select-all' });
 			const chk = chkLabel.createEl('input', { attr: { type: 'checkbox' } });
 			chk.checked = allSelected;
 			chk.addEventListener('change', (e) => {
@@ -117,8 +135,10 @@ export class FieldSelector {
 				void this.selectCategory(cat.id, chk.checked);
 			});
 			chkLabel.createSpan({ text: tr('field-select-all') });
+			this.catCheckboxes.set(cat.id, chk);
 
 			const grid = details.createDiv({ cls: 'babylon-field-grid' });
+			this.catGrids.set(cat.id, grid);
 
 			for (const field of fields) {
 				const isPersonal = field.personal;
@@ -127,15 +147,14 @@ export class FieldSelector {
 
 				const label = grid.createEl('label', { cls: 'babylon-field-item' });
 				if (disabled) label.addClass('babylon-field-disabled');
-
 				const cb = label.createEl('input', { attr: { type: 'checkbox' } });
 				cb.checked = checked;
 				cb.disabled = disabled;
 				cb.addEventListener('change', () => {
 					void this.toggleField(field.key);
 				});
-
 				label.createSpan({ text: tr(field.labelKey) });
+				this.fieldCheckboxes.set(field.key, cb);
 			}
 		}
 	}
