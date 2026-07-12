@@ -104,24 +104,19 @@ export class FieldSelector {
 			setIcon(iconSpan, cat.icon);
 			summary.createSpan({ text: tr(cat.labelKey) });
 
-			// select-all / deselect-all buttons
-			const btnGroup = summary.createSpan({ cls: 'babylon-field-cat-actions' });
-			const selectAllBtn = btnGroup.createEl('button', {
-				cls: 'babylon-cat-btn',
-				text: tr('field-select-all'),
+			// select-all checkbox
+			const allSelected = fields.every((f) => {
+				const disabled = f.personal && !this.personalEnabled;
+				return disabled || this.selected.has(f.key);
 			});
-			selectAllBtn.addEventListener('click', (e) => {
+			const chkLabel = summary.createSpan({ cls: 'babylon-cat-select-all' });
+			const chk = chkLabel.createEl('input', { attr: { type: 'checkbox' } });
+			chk.checked = allSelected;
+			chk.addEventListener('change', (e) => {
 				e.stopPropagation();
-				void this.selectCategory(cat.id, true);
+				void this.selectCategory(cat.id, chk.checked);
 			});
-			const deselectBtn = btnGroup.createEl('button', {
-				cls: 'babylon-cat-btn',
-				text: tr('field-deselect-all'),
-			});
-			deselectBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				void this.selectCategory(cat.id, false);
-			});
+			chkLabel.createSpan({ text: tr('field-select-all') });
 
 			const grid = details.createDiv({ cls: 'babylon-field-grid' });
 

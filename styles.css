@@ -249,26 +249,15 @@
 	color: var(--text-muted);
 }
 
-.babylon-field-cat-actions {
+.babylon-cat-select-all {
 	margin-left: auto;
 	display: flex;
-	gap: 4px;
+	align-items: center;
 }
 
-.babylon-cat-btn {
-	background: none;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 4px;
-	padding: 1px 8px;
-	font-size: 0.75em;
+.babylon-cat-select-all input[type="checkbox"] {
+	margin: 0;
 	cursor: pointer;
-	color: var(--text-muted);
-	white-space: nowrap;
-}
-
-.babylon-cat-btn:hover {
-	color: var(--text-normal);
-	background: var(--background-modifier-hover);
 }
 
 .babylon-field-grid {
@@ -321,11 +310,44 @@
 	font-weight: 600;
 }
 
-.babylon-tmpl-custom-desc {
+.babylon-custom-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 6px 0 8px;
+}
+
+.babylon-custom-desc {
 	font-size: 0.82em;
 	color: var(--text-muted);
-	margin: 0 0 8px;
 	line-height: 1.4;
+	flex: 1;
+}
+
+.babylon-custom-desc a {
+	color: var(--text-accent);
+	text-decoration: none;
+	margin-left: 4px;
+}
+
+.babylon-custom-desc a:hover {
+	text-decoration: underline;
+}
+
+.babylon-custom-input {
+	flex-shrink: 0;
+	width: 220px;
+	padding: 5px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 0.85em;
+}
+
+.babylon-custom-input:focus {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
 }
 
 .babylon-custom-tags {

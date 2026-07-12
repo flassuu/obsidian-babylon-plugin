@@ -145,16 +145,57 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 	});
 
 	// Custom fields section
-	const customSection = body.createDiv({ cls: 'babylon-custom-fields-section' });
-	customSection.createEl('h4', { text: tr('settings-tmpl-custom-fields') });
-	customSection.createEl('p', {
-		text: tr('settings-tmpl-custom-desc'),
-		cls: 'babylon-tmpl-custom-desc',
+	const customFieldsSetting = new Setting(body)
+		.setName(tr('settings-tmpl-custom-fields'))
+		.setDesc(tr('settings-tmpl-custom-desc'));
+
+	// append wiki link to desc
+	const customDescEl = customFieldsSetting.descEl;
+	customDescEl.appendText(' ');
+	const wikiA = customDescEl.createEl('a', {
+		href: 'https://github.com/flassuu/obsidian-babylon-plugin/wiki',
+		text: tr('settings-tmpl-wiki'),
 	});
+	wikiA.addClass('babylon-tmpl-wiki');
+
+	customFieldsSetting.addText((text) => {
+		text.setPlaceholder(tr('field-custom-example'));
+		text.inputEl.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				addCustomField(text.getValue().trim());
+				text.setValue('');
+			}
+		});
+	});
+
+	customFieldsSetting.addButton((btn) => {
+		btn.setIcon('plus');
+		btn.setTooltip('Add field');
+		btn.onClick(() => {
+			const inputEl = customFieldsSetting.settingEl.querySelector('input[type="text"]');
+			if (inputEl instanceof HTMLInputElement) {
+				addCustomField(inputEl.value.trim());
+				inputEl.value = '';
+			}
+		});
+	});
+
+	function addCustomField(val: string): void {
+		const s = animeSettings;
+		if (!s) return;
+		if (!val || s.customFieldNames.includes(val)) return;
+		s.customFieldNames.push(val);
+		if (!s.selectedFields.includes(val)) {
+			s.selectedFields.push(val);
+		}
+		void plugin.saveSettings();
+		plugin.updateAnilistProvider();
+		plugin.settingsTab.display();
+	}
 
 	const customFieldNames = animeSettings.customFieldNames ?? [];
 	if (customFieldNames.length > 0) {
-		const tagContainer = customSection.createDiv({ cls: 'babylon-custom-tags' });
+		const tagContainer = body.createDiv({ cls: 'babylon-custom-tags' });
 		for (const name of customFieldNames) {
 			const tag = tagContainer.createSpan({ cls: 'babylon-custom-tag' });
 			tag.createSpan({ text: name });
@@ -169,26 +210,6 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 			});
 		}
 	}
-
-	new Setting(customSection)
-		.addText((text) => {
-			text.setPlaceholder(tr('field-custom-example'));
-			text.inputEl.addEventListener('keydown', (e) => {
-				if (e.key === 'Enter') {
-					const val = text.getValue().trim();
-					if (val && !animeSettings.customFieldNames.includes(val)) {
-						animeSettings.customFieldNames.push(val);
-						if (!animeSettings.selectedFields.includes(val)) {
-							animeSettings.selectedFields.push(val);
-						}
-						void plugin.saveSettings();
-						plugin.updateAnilistProvider();
-						plugin.settingsTab.display();
-					}
-					text.setValue('');
-				}
-			});
-		});
 
 	// Generate template button
 	new Setting(body)
