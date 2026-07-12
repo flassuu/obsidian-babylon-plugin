@@ -1,4 +1,4 @@
-import { type App, type TFile, type Vault } from 'obsidian';
+import { type App, type Vault } from 'obsidian';
 import type { MediaDetails } from '../types';
 
 export const TEMPLATE_FIELDS: Record<string, string> = {
@@ -58,17 +58,21 @@ export class TemplateService {
 	}
 
 	async render(
-		templateFile: TFile | null,
+		templatePath: string,
 		details: MediaDetails,
-		defaultTemplate: string,
 	): Promise<string> {
 		let template: string;
+	try {
+		template = templatePath
+			? await this.vault.adapter.read(templatePath)
+			: '';
+	} catch {
+		template = '';
+	}
 
-		if (templateFile) {
-			template = await this.vault.read(templateFile);
-		} else {
-			template = defaultTemplate;
-		}
+	if (!template) {
+		template = this.getDefaultAnimeTemplate();
+	}
 
 		const values = buildValueMap(details);
 		return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {

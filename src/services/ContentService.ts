@@ -1,4 +1,4 @@
-import { Notice, type App, TFile } from 'obsidian';
+import { Notice, type App, type TFile } from 'obsidian';
 import type { BabylonSettings, MediaDetails, MediaType } from '../types';
 import { TemplateService } from './TemplateService';
 import { sanitizeFilename } from '../utils/sanitize';
@@ -36,23 +36,13 @@ export class ContentService {
 			return null;
 		}
 
-		let templateFile: TFile | null = null;
-		if (mediaSettings.templatePath) {
-			const tf = this.app.vault.getAbstractFileByPath(mediaSettings.templatePath);
-			if (tf instanceof TFile) {
-				templateFile = tf;
-			}
-		}
-
-		const defaultTemplate = this.templateService.getDefaultAnimeTemplate();
-		const content = await this.templateService.render(
-			templateFile,
+		const rendered = await this.templateService.render(
+			mediaSettings.templatePath,
 			details,
-			defaultTemplate,
 		);
 
 		try {
-			const file = await this.app.vault.create(filePath, content);
+			const file = await this.app.vault.create(filePath, rendered);
 			new Notice(`${tr('create-note-success')}: ${details.title}`);
 			return file;
 		} catch (err) {
