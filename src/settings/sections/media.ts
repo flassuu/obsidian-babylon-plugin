@@ -1,4 +1,4 @@
-import { Setting } from 'obsidian';
+import { Setting, type App } from 'obsidian';
 import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import type { MediaType, ProviderId } from '../../types';
@@ -8,6 +8,16 @@ const MEDIA_TYPES: { key: MediaType; labelKey: string }[] = [
 	{ key: 'movie', labelKey: 'settings-media-movie' },
 	{ key: 'series', labelKey: 'settings-media-series' },
 ];
+
+function normalizePath(app: App, input: string): string {
+	let path = input.trim();
+	if (!path) return '';
+	const vaultPath = (app.vault.adapter as { basePath?: string }).basePath;
+	if (vaultPath && path.startsWith(vaultPath)) {
+		path = path.slice(vaultPath.length).replace(/^[/\\]+/, '');
+	}
+	return path;
+}
 
 const PROVIDER_OPTIONS: { id: ProviderId | ''; label: string }[] = [
 	{ id: '', label: '—' },
@@ -21,6 +31,7 @@ export function createMediaSection(
 	containerEl: HTMLElement,
 	plugin: BabylonPlugin,
 ): void {
+	const app = plugin.app;
 	containerEl.createEl('h2', { text: tr('settings-media') });
 
 	for (const mediaType of MEDIA_TYPES) {
@@ -75,10 +86,10 @@ export function createMediaSection(
 			.setDesc(tr('settings-template-desc'))
 			.addText((text) =>
 				text
-					.setPlaceholder('Templates/anime-template.md')
+					.setPlaceholder('TEMPLATES/anime-template.md')
 					.setValue(settings.templatePath)
 					.onChange(async (value) => {
-						settings.templatePath = value;
+						settings.templatePath = normalizePath(app, value);
 						await plugin.saveSettings();
 					}),
 			);

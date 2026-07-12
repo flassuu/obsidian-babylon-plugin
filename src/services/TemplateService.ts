@@ -1,4 +1,4 @@
-import { type App, type Vault } from 'obsidian';
+import { type App } from 'obsidian';
 import type { MediaDetails } from '../types';
 
 export const TEMPLATE_FIELDS: Record<string, string> = {
@@ -51,28 +51,40 @@ function buildValueMap(details: MediaDetails): Record<string, string> {
 }
 
 export class TemplateService {
-	private vault: Vault;
+	private app: App;
 
 	constructor(app: App) {
-		this.vault = app.vault;
+		this.app = app;
 	}
 
 	async render(
 		templatePath: string,
 		details: MediaDetails,
 	): Promise<string> {
-		let template: string;
-	try {
-		template = templatePath
-			? await this.vault.adapter.read(templatePath)
-			: '';
-	} catch {
-		template = '';
-	}
+		let template = '';
 
-	if (!template) {
-		template = this.getDefaultAnimeTemplate();
-	}
+		if (templatePath) {
+			const vault = this.app.vault;
+			// Try the path as-is first
+			try {
+				template = await vault.adapter.read(templatePath);
+			} catch {
+				// If that fails, try stripping vault base path
+				const basePath = (vault.adapter as { basePath?: string }).basePath;
+				if (basePath && templatePath.startsWith(basePath)) {
+					const relative = templatePath.slice(basePath.length).replace(/^[/\\]+/, '');
+					try {
+						template = await vault.adapter.read(relative);
+					} catch {
+						template = '';
+					}
+				}
+			}
+		}
+
+		if (!template) {
+			template = this.getDefaultAnimeTemplate();
+		}
 
 		const values = buildValueMap(details);
 		return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
