@@ -41,15 +41,6 @@ query ($id: Int) {
     status
     popularity
     meanScore
-    source
-    tagline
-    startDate { year month day }
-    endDate { year month day }
-    duration
-    chapters
-    volumes
-    hashtag
-    synonyms
   }
 }`;
 
@@ -67,10 +58,7 @@ export class AnilistProvider implements ContentProvider {
 	requiresKey = false;
 
 	async search(query: string): Promise<SearchResult[]> {
-		const data = await fetchJson(ANILIST_API, {
-			'Content-Type': 'application/json',
-			Accept: 'application/json',
-		}, 'POST', JSON.stringify({
+		const data = await fetchJson(ANILIST_API, 'POST', JSON.stringify({
 			query: SEARCH_QUERY,
 			variables: { search: query, page: 1, perPage: 20 },
 		})) as Record<string, unknown>;
@@ -95,10 +83,7 @@ export class AnilistProvider implements ContentProvider {
 			? (raw as Record<string, unknown>)['id']
 			: parseInt(sourceId, 10);
 
-		const data = await fetchJson(ANILIST_API, {
-			'Content-Type': 'application/json',
-			Accept: 'application/json',
-		}, 'POST', JSON.stringify({
+		const data = await fetchJson(ANILIST_API, 'POST', JSON.stringify({
 			query: DETAIL_QUERY,
 			variables: { id },
 		})) as Record<string, unknown>;
@@ -127,9 +112,6 @@ export class AnilistProvider implements ContentProvider {
 			provider: 'anilist',
 			status: media['status'] ?? null,
 			popularity: media['popularity'] ?? null,
-			meanScore: media['meanScore'] ?? null,
-			source: media['source'] ?? null,
-			studiosRaw: studioNames,
 		};
 	}
 }
