@@ -1,0 +1,26 @@
+# Build artifacts
+main.js
+
+# Sourcemaps
+*.map
+
+# Dependencies
+node_modules
+
+# Obsidian
+data.json
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Environment
+.env
+.env.local
