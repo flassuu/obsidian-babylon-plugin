@@ -13,6 +13,18 @@ export interface MediaTypeSettings {
 	templatePath: string;
 }
 
+export interface AnilistAuthSettings {
+	personalizationEnabled: boolean;
+	accessToken: string;
+	customFields: string;
+}
+
+export interface AnilistSyncSettings {
+	enabled: boolean;
+	syncOnStartup: boolean;
+	twoWaySync: boolean;
+}
+
 export interface BabylonSettings {
 	language: SupportedLocale;
 	apiKeys: {
@@ -21,6 +33,8 @@ export interface BabylonSettings {
 		googleBooks: string;
 		steam: string;
 	};
+	anilistAuth: AnilistAuthSettings;
+	anilistSync: AnilistSyncSettings;
 	media: Partial<Record<MediaType, MediaTypeSettings>>;
 }
 
@@ -58,3 +72,17 @@ export interface ContentProvider {
 	search(query: string): Promise<SearchResult[]>;
 	fetchDetails(sourceId: string, raw?: unknown): Promise<MediaDetails | null>;
 }
+
+export interface SyncConflict {
+	sourceId: string;
+	title: string;
+	localStatus: string | null;
+	remoteStatus: string | null;
+	localScore: number | null;
+	remoteScore: number | null;
+	localProgress: number | null;
+	remoteProgress: number | null;
+	localNote: string | null;
+	remoteNote: string | null;
+}
+

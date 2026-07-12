@@ -60,7 +60,7 @@ export function createMediaSection(
 			.setDesc(tr('settings-folder-desc'))
 			.addText((text) =>
 				text
-					.setPlaceholder('content/anime')
+					.setPlaceholder('Content/anime')
 					.setValue(settings.folder)
 					.onChange(async (value) => {
 						settings.folder = value;

@@ -8,6 +8,16 @@ export const DEFAULT_SETTINGS: BabylonSettings = {
 		googleBooks: '',
 		steam: '',
 	},
+	anilistAuth: {
+		personalizationEnabled: false,
+		accessToken: '',
+		customFields: '',
+	},
+	anilistSync: {
+		enabled: false,
+		syncOnStartup: false,
+		twoWaySync: true,
+	},
 	media: {
 		anime: {
 			enabled: true,

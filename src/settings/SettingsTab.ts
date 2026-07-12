@@ -4,6 +4,7 @@ import { setLocale } from '../i18n';
 import { createGeneralSection } from './sections/general';
 import { createApiSection } from './sections/api';
 import { createMediaSection } from './sections/media';
+import { createAnilistSection } from './sections/anilist';
 
 export class BabylonSettingTab extends PluginSettingTab {
 	plugin: BabylonPlugin;
@@ -20,6 +21,7 @@ export class BabylonSettingTab extends PluginSettingTab {
 		setLocale(this.plugin.settings.language);
 
 		createGeneralSection(containerEl, this.plugin);
+		createAnilistSection(containerEl, this.plugin);
 		createApiSection(containerEl, this.plugin);
 		createMediaSection(containerEl, this.plugin);
 	}

@@ -11,3 +11,69 @@
 	margin: 0.5em;
 	display: block;
 }
+
+.babylon-source-btn {
+	margin: 0.5em;
+	display: block;
+}
+
+.babylon-conflict-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.babylon-conflict-field {
+	font-weight: 600;
+	padding: 4px 8px;
+}
+
+.babylon-conflict-buttons {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-top: 12px;
+}
+
+.babylon-list-entry {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px;
+	cursor: pointer;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.babylon-list-entry:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.babylon-list-entry img {
+	object-fit: cover;
+	border-radius: 4px;
+	width: 40px;
+	height: 56px;
+}
+
+.babylon-search-input {
+	width: 100%;
+	margin-bottom: 12px;
+	padding: 8px;
+}
+
+.babylon-list-container {
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+.babylon-monospace-input {
+	width: 100%;
+	font-family: monospace;
+}
+
+.babylon-auth-steps {
+	margin: 0;
+	padding-left: 1.5em;
+}
+.babylon-auth-steps li {
+	margin-bottom: 0.25em;
+}
