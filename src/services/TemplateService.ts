@@ -27,9 +27,9 @@ function buildValueMap(details: MediaDetails): Record<string, string> {
 			map['genre_list'] = val.map((g: string) => `  - "${g}"`).join('\n');
 			continue;
 		}
-		if (key === 'creators' && Array.isArray(val)) {
-			map['creators'] = val.join(', ');
-			map['creator_list'] = val.map((c: string) => `  - "${c}"`).join('\n');
+		if (key === 'studios' && Array.isArray(val)) {
+			map['studios'] = val.join(', ');
+			map['studio_list'] = val.map((s: string) => `  - "${s}"`).join('\n');
 			continue;
 		}
 		map[key] = flattenValue(val);

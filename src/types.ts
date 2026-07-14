@@ -61,11 +61,11 @@ export interface MediaDetails {
 	description: string | null;
 	cover: string | null;
 	genres: string[];
-	creators: string[];
-	rating: number | null;
-	url: string | null;
+	studios: string[];
+	averageScore: number | null;
+	siteUrl: string | null;
 	format: string | null;
-	progressTotal: number | null;
+	episodes: number | null;
 	sourceId: string;
 	provider: ProviderId;
 	[key: string]: unknown;

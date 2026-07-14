@@ -179,11 +179,11 @@ export class AnilistProvider implements ContentProvider {
 			description: media['description'] ? stripHtml(media['description'] as string) : null,
 			cover: (media['coverImage'] as Record<string, string>)?.['large'] ?? null,
 			genres: (media['genres'] as string[]) ?? [],
-			creators: studioNames,
-			rating: (media['averageScore'] as number) ?? null,
-			url: (media['siteUrl'] as string) ?? null,
+			studios: studioNames,
+			averageScore: (media['averageScore'] as number) ?? null,
+			siteUrl: (media['siteUrl'] as string) ?? null,
 			format: (media['format'] as string) ?? null,
-			progressTotal: (media['episodes'] as number) ?? null,
+			episodes: (media['episodes'] as number) ?? null,
 			sourceId: String(media['id']),
 			provider: 'anilist',
 		};
@@ -193,6 +193,7 @@ export class AnilistProvider implements ContentProvider {
 			'id', 'status', 'season', 'duration',
 			'bannerImage', 'meanScore', 'popularity', 'favourites',
 			'hashtag', 'countryOfOrigin', 'isAdult', 'source', 'synonyms', 'updatedAt',
+			'rankings', 'trailer', 'streamingEpisodes', 'externalLinks',
 		];
 		for (const key of extraKeys) {
 			if (media[key] !== undefined) {
