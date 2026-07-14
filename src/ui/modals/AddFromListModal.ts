@@ -15,18 +15,19 @@ query ($userId: Int!, $type: MediaType) {
         score
         progress
         notes
-        media {
-          id
-          title { romaji english native }
-          coverImage { large }
-          format
-          episodes
-          averageScore
-          genres
-          description(asHtml: false)
-          siteUrl
-          studios(isMain: true) { nodes { name } }
-        }
+		media {
+		  id
+		  title { romaji english native }
+		  coverImage { large }
+		  format
+		  episodes
+		  averageScore
+		  genres
+		  description(asHtml: false)
+		  siteUrl
+		  seasonYear
+		  studios(isMain: true) { nodes { name } }
+		}
       }
     }
   }
@@ -49,6 +50,7 @@ interface ListEntry {
 		genres: string[] | null;
 		description: string | null;
 		siteUrl: string | null;
+		seasonYear: number | null;
 		studios: { nodes: Array<{ name: string }> | null } | null;
 	};
 }
@@ -63,6 +65,7 @@ export class AddFromListModal extends Modal {
 		app: App,
 		private token: string,
 		private onSelect: (details: MediaDetails) => void,
+		private fetchDetails: (sourceId: string) => Promise<MediaDetails | null>,
 	) {
 		super(app);
 	}
@@ -156,7 +159,7 @@ export class AddFromListModal extends Modal {
 			}
 
 			card.addEventListener('click', () => {
-				this.selectEntry(entry);
+				void this.selectEntry(entry);
 			});
 		}
 
@@ -165,14 +168,34 @@ export class AddFromListModal extends Modal {
 		}
 	}
 
-	private selectEntry(entry: ListEntry): void {
+	private async selectEntry(entry: ListEntry): Promise<void> {
+		const sourceId = String(entry.media.id);
+
+		// fetch full details from the provider for complete template data
+		let full: MediaDetails | null = null;
+		try {
+			full = await this.fetchDetails(sourceId);
+		} catch {
+			console.warn('Babylon: fetchDetails failed, falling back to list data');
+		}
+		if (full) {
+			full.status = entry.status?.toLowerCase() ?? 'not_started';
+			full.score = entry.score;
+			full.progress = entry.progress;
+			full.notes = entry.notes;
+			this.close();
+			this.onSelect(full);
+			return;
+		}
+
+		// fallback to list data if fetchDetails fails
 		const media = entry.media;
 		const studios = media.studios?.nodes?.map((n) => n.name).filter(Boolean) ?? [];
 
 		const details: MediaDetails = {
 			title: this.pickTitle(media.title),
 			originalTitle: media.title.romaji ?? media.title.native ?? null,
-			year: null,
+			year: media.seasonYear ?? null,
 			description: media.description ? stripHtml(media.description) : null,
 			cover: media.coverImage?.large ?? null,
 			genres: media.genres ?? [],
@@ -181,7 +204,7 @@ export class AddFromListModal extends Modal {
 			siteUrl: media.siteUrl ?? null,
 			format: media.format ?? null,
 			episodes: media.episodes ?? null,
-			sourceId: String(media.id),
+			sourceId,
 			provider: 'anilist',
 			status: entry.status?.toLowerCase() ?? 'not_started',
 			score: entry.score,

@@ -13,24 +13,24 @@ export async function fetchJson(
 	body?: string,
 	token?: string,
 ): Promise<unknown> {
-	const headers: Record<string, string> = {};
+	const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
 	if (token) headers['Authorization'] = `Bearer ${token}`;
 
-	const resp = await requestUrl({ url, method, contentType: 'application/json', headers, body });
+	const resp = await requestUrl({ url, method, headers, body, throw: false });
 	if (resp.status >= 400) throw new Error(`HTTP ${resp.status}: ${resp.text.slice(0, 200)}`);
 	return resp.json;
 }
 
 async function requestRaw(query: string, variables: Record<string, unknown>, token?: string): Promise<Record<string, unknown>> {
-	const headers: Record<string, string> = {};
+	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 	if (token) headers['Authorization'] = `Bearer ${token}`;
 
 	const resp = await requestUrl({
 		url: ANILIST_API,
 		method: 'POST',
-		contentType: 'application/json',
 		headers,
 		body: JSON.stringify({ query, variables }),
+		throw: false,
 	});
 
 	if (resp.status >= 400) {

@@ -80,7 +80,7 @@ export class AnilistProvider implements ContentProvider {
 
 		for (const key of this.requestedFields) {
 			const def = allDefs.find((f) => f.key === key);
-			if (def && def.graphql && !handled.has(def.graphql)) {
+			if (def && def.graphql && !def.personal && !handled.has(def.graphql)) {
 				fragments.push(def.graphql);
 				handled.add(def.graphql);
 			} else if (!def) {
@@ -117,10 +117,7 @@ export class AnilistProvider implements ContentProvider {
 	}
 
 	async search(query: string): Promise<SearchResult[]> {
-		const extraFragments = this.getSelectedGraphQLFragments();
-		const extra = extraFragments.length > 0 ? `\n    ${extraFragments.join('\n    ')}` : '';
-
-		const q = `${SEARCH_QUERY_HEAD}${SEARCH_GRAPHQL}${extra}
+		const q = `${SEARCH_QUERY_HEAD}${SEARCH_GRAPHQL}
     }
   }
 }`;

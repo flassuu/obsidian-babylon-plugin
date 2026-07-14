@@ -221,9 +221,14 @@ export default class BabylonPlugin extends Plugin {
 			return;
 		}
 
-		const modal = new AddFromListModal(this.app, this.settings.anilistAuth.accessToken, (details) => {
-			void this.contentService.createNote('anime', details, this.settings);
-		});
+		const modal = new AddFromListModal(
+			this.app,
+			this.settings.anilistAuth.accessToken,
+			(details) => {
+				void this.contentService.createNote('anime', details, this.settings);
+			},
+			(sourceId) => this.anilistProvider.fetchDetails(sourceId),
+		);
 		modal.open();
 	}
 
