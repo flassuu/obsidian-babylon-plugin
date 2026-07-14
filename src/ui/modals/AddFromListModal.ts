@@ -4,6 +4,7 @@ import { stripHtml } from '../../utils/sanitize';
 import { tr } from '../../i18n';
 import type { MediaDetails } from '../../types';
 
+// anilist graphql: fetch the user's full anime list
 const LIST_QUERY = `
 query ($userId: Int!, $type: MediaType) {
   MediaListCollection(userId: $userId, type: $type) {
@@ -55,6 +56,7 @@ interface ListEntry {
 	};
 }
 
+// modal that lets the user browse and pick from their own anilist list
 export class AddFromListModal extends Modal {
 	private entries: ListEntry[] = [];
 	private filtered: ListEntry[] = [];
@@ -70,6 +72,7 @@ export class AddFromListModal extends Modal {
 		super(app);
 	}
 
+	// load the user's list on open and render it
 	async onOpen(): Promise<void> {
 		const { contentEl } = this;
 		contentEl.empty();
@@ -111,6 +114,7 @@ export class AddFromListModal extends Modal {
 		this.filterEntries();
 	}
 
+	// filter local entries by title match in real time
 	private filterEntries(): void {
 		const q = this.searchInput.value.toLowerCase().trim();
 		this.filtered = q
@@ -168,17 +172,18 @@ export class AddFromListModal extends Modal {
 		}
 	}
 
+	// select an entry: try fetchDetails first for full data, fall back to list data
 	private async selectEntry(entry: ListEntry): Promise<void> {
 		const sourceId = String(entry.media.id);
 
-		// fetch full details from the provider for complete template data
 		let full: MediaDetails | null = null;
 		try {
 			full = await this.fetchDetails(sourceId);
-		} catch {
-			console.warn('Babylon: fetchDetails failed, falling back to list data');
+		} catch (e) {
+			console.warn('Babylon: fetchDetails failed, falling back to list data', e);
 		}
 		if (full) {
+			// merge personal list fields on top of fetched details
 			full.status = entry.status?.toLowerCase() ?? 'not_started';
 			full.score = entry.score;
 			full.progress = entry.progress;
@@ -188,7 +193,7 @@ export class AddFromListModal extends Modal {
 			return;
 		}
 
-		// fallback to list data if fetchDetails fails
+		// fallback: build details from the list query response
 		const media = entry.media;
 		const studios = media.studios?.nodes?.map((n) => n.name).filter(Boolean) ?? [];
 

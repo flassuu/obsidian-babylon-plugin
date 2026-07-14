@@ -173,11 +173,13 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 			const removeBtn = tag.createSpan({ cls: 'babylon-custom-tag-remove' });
 			removeBtn.textContent = '\u00D7';
 			removeBtn.addEventListener('click', () => {
-				s0.customFieldNames = s0.customFieldNames.filter((f) => f !== name);
-				s0.selectedFields = s0.selectedFields.filter((f) => f !== name);
-				void plugin.saveSettings();
-				plugin.updateAnilistProvider();
-				renderTags();
+				void (async () => {
+					s0.customFieldNames = s0.customFieldNames.filter((f) => f !== name);
+					s0.selectedFields = s0.selectedFields.filter((f) => f !== name);
+					await plugin.saveSettings();
+					plugin.updateAnilistProvider();
+					renderTags();
+				})();
 			});
 		}
 	}
@@ -209,9 +211,6 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 		if (!s) return;
 		if (!val || s.customFieldNames.includes(val)) return;
 		s.customFieldNames.push(val);
-		if (!s.selectedFields.includes(val)) {
-			s.selectedFields.push(val);
-		}
 		void plugin.saveSettings();
 		plugin.updateAnilistProvider();
 		renderTags();

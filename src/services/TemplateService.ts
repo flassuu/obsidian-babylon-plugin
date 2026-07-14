@@ -1,12 +1,13 @@
-import { type App } from 'obsidian';
+import { type App, TFile } from 'obsidian';
 import type { MediaDetails } from '../types';
 
+// convert a value to a flat string for template substitution
 function flattenValue(val: unknown): string {
 	if (val === null || val === undefined) return '';
 	if (Array.isArray(val)) return val.map(String).join(', ');
 	if (typeof val === 'object') {
 		const obj = val as Record<string, unknown>;
-		if ('year' in obj || 'month' in obj || 'day' in obj) {
+		if ('year' in obj && ('month' in obj || 'day' in obj)) {
 			const y = typeof obj['year'] === 'number' ? String(obj['year']) : '';
 			const m = typeof obj['month'] === 'number' ? String(obj['month']) : '';
 			const d = typeof obj['day'] === 'number' ? String(obj['day']) : '';
@@ -19,6 +20,7 @@ function flattenValue(val: unknown): string {
 	return '';
 }
 
+// build a flat key-value map from MediaDetails for template replacement
 function buildValueMap(details: MediaDetails): Record<string, string> {
 	const map: Record<string, string> = {};
 	for (const [key, val] of Object.entries(details)) {
@@ -37,6 +39,7 @@ function buildValueMap(details: MediaDetails): Record<string, string> {
 	return map;
 }
 
+// loads a template file and replaces {{placeholders}} with media data
 export class TemplateService {
 	private app: App;
 
@@ -50,19 +53,14 @@ export class TemplateService {
 	): Promise<string> {
 		let template = '';
 
+		// try loading the user's template file; fall back to the default if it fails
 		if (templatePath) {
-			const vault = this.app.vault;
-			try {
-				template = await vault.adapter.read(templatePath);
-			} catch {
-				const basePath = (vault.adapter as { basePath?: string }).basePath;
-				if (basePath && templatePath.startsWith(basePath)) {
-					const relative = templatePath.slice(basePath.length).replace(/^[/\\]+/, '');
-					try {
-						template = await vault.adapter.read(relative);
-					} catch {
-						template = '';
-					}
+			const file = this.app.vault.getAbstractFileByPath(templatePath);
+			if (file instanceof TFile) {
+				try {
+					template = await this.app.vault.read(file);
+				} catch {
+					template = '';
 				}
 			}
 		}

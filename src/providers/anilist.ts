@@ -60,6 +60,7 @@ export class AnilistProvider implements ContentProvider {
 	private hasToken = false;
 	private accessToken = '';
 
+	// tell the provider which fields the user wants in the graphql query
 	setRequestedFields(fields: string[], hasToken: boolean): void {
 		this.requestedFields = fields;
 		this.hasToken = hasToken;
@@ -73,10 +74,24 @@ export class AnilistProvider implements ContentProvider {
 		return this.accessToken || undefined;
 	}
 
+	// build a list of graphql fragments for all requested non-personal fields
+	// personal fields are excluded — they live inside mediaListEntry {}
 	private getSelectedGraphQLFragments(): string[] {
 		const allDefs = getFields('anime');
 		const fragments: string[] = [];
 		const handled = new Set<string>();
+
+		// fields already covered by ALWAYS_DETAIL_GRAPHQL
+		const alwaysFields = new Set(
+			ALWAYS_DETAIL_GRAPHQL.split('\n').map((l) => l.trim().split(/\s/)[0]).filter(Boolean),
+		);
+
+		// known composite AniList types that need sub-selection but aren't in the field definitions
+		const COMPOSITE_FIELDS: Record<string, string> = {
+			'startDate': 'startDate { year month day }',
+			'endDate': 'endDate { year month day }',
+			'nextAiringEpisode': 'nextAiringEpisode { airingAt timeUntilAiring episode }',
+		};
 
 		for (const key of this.requestedFields) {
 			const def = allDefs.find((f) => f.key === key);
@@ -84,9 +99,15 @@ export class AnilistProvider implements ContentProvider {
 				fragments.push(def.graphql);
 				handled.add(def.graphql);
 			} else if (!def) {
-				// custom field name — use as-is (assumed top-level simple field)
+				// custom field name — use as-is (simple) or with sub-selection (composite)
 				const simple = key.replace(/[^a-zA-Z0-9_]/g, '');
-				if (simple && !handled.has(simple)) {
+				if (!simple || handled.has(simple) || alwaysFields.has(simple)) continue;
+
+				const composite = COMPOSITE_FIELDS[simple];
+				if (composite) {
+					fragments.push(composite);
+					handled.add(simple);
+				} else {
 					fragments.push(simple);
 					handled.add(simple);
 				}
@@ -96,12 +117,14 @@ export class AnilistProvider implements ContentProvider {
 		return fragments;
 	}
 
+	// check whether the user has requested any personal (tracking) fields
 	private needsMediaListEntry(): boolean {
 		if (!this.hasToken) return false;
 		const personalKeys = ['progress', 'score', 'myStatus', 'startedAt', 'completedAt', 'notes', 'repeat', 'progressVolumes'];
 		return this.requestedFields.some((k) => personalKeys.includes(k));
 	}
 
+	// build the mediaListEntry sub-query for personal tracking data
 	private buildMediaListEntryFragment(): string {
 		return `mediaListEntry {
       id
@@ -116,6 +139,7 @@ export class AnilistProvider implements ContentProvider {
     }`;
 	}
 
+	// search anilist by title — returns minimal data for the suggestion list
 	async search(query: string): Promise<SearchResult[]> {
 		const q = `${SEARCH_QUERY_HEAD}${SEARCH_GRAPHQL}
     }
@@ -142,6 +166,7 @@ export class AnilistProvider implements ContentProvider {
 		}));
 	}
 
+	// fetch full detail for a single anime — builds a dynamic graphql query from requested fields
 	async fetchDetails(sourceId: string, raw?: unknown): Promise<MediaDetails | null> {
 		const id = raw
 			? (raw as Record<string, unknown>)['id']
@@ -155,6 +180,9 @@ export class AnilistProvider implements ContentProvider {
     ${ALWAYS_DETAIL_GRAPHQL}${extra}${mleFragment}
   }
 }`;
+
+		console.debug('Babylon: requestedFields', this.requestedFields);
+		console.debug('Babylon: detail query', q);
 
 		const data = await fetchJson(ANILIST_API, 'POST', JSON.stringify({
 			query: q,
@@ -198,11 +226,13 @@ export class AnilistProvider implements ContentProvider {
 			}
 		}
 
+		// join tag names into a comma-separated string
 		const tags = media['tags'] as Array<Record<string, unknown>> | undefined;
 		if (tags) {
 			details['tags'] = tags.map((t) => t['name']).filter(Boolean).join(', ');
 		}
 
+		// expose cover variants individually
 		const coverImg = media['coverImage'] as Record<string, unknown> | undefined;
 		if (coverImg) {
 			details['coverExtraLarge'] = coverImg['extraLarge'] ?? null;

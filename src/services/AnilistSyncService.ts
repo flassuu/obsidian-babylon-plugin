@@ -2,9 +2,11 @@ import { App, Notice, TFile } from 'obsidian';
 import { requestAnilist } from '../utils/fetcher';
 import { stripHtml, sanitizeFilename } from '../utils/sanitize';
 import { ConflictModal, type ConflictResolution } from '../ui/modals/ConflictModal';
+import { TemplateService } from './TemplateService';
 import { tr } from '../i18n';
 import type { BabylonSettings, MediaDetails, SyncConflict } from '../types';
 
+// graphql: fetch the authenticated user's full anime list for sync
 const USER_LIST_QUERY = `
 query ($userId: Int, $userName: String, $type: MediaType) {
   MediaListCollection(userId: $userId, userName: $userName, type: $type) {
@@ -44,6 +46,7 @@ query ($userId: Int, $userName: String, $type: MediaType) {
   }
 }`;
 
+// graphql: push local changes back to anilist
 const UPDATE_MUTATION = `
 mutation ($id: Int, $mediaId: Int, $status: MediaListStatus, $score: Float, $progress: Int, $notes: String) {
   SaveMediaListEntry(id: $id, mediaId: $mediaId, status: $status, score: $score, progress: $progress, notes: $notes) {
@@ -82,6 +85,7 @@ interface AnilistEntry {
 	};
 }
 
+// bidirectional sync between local obsidian notes and anilist
 export class AnilistSyncService {
 	private app: App;
 	private token: string;
@@ -93,6 +97,7 @@ export class AnilistSyncService {
 		this.settings = settings;
 	}
 
+	// run a full sync: fetch remote list, match against local files, create/update/conflict
 	async sync(): Promise<void> {
 		new Notice(tr('sync-in-progress'));
 
@@ -125,7 +130,7 @@ export class AnilistSyncService {
 	}
 
 	private async fetchUserList(): Promise<AnilistEntry[]> {
-		const data = await requestAnilist(USER_LIST_QUERY, { type: 'ANIME', userName: undefined }, this.token) as Record<string, unknown>;
+		const data = await requestAnilist(USER_LIST_QUERY, { type: 'ANIME' }, this.token) as Record<string, unknown>;
 
 		const collection = data?.['MediaListCollection'] as Record<string, unknown> ?? {};
 		const lists = (collection['lists'] as Array<Record<string, unknown>>) ?? [];
@@ -139,6 +144,7 @@ export class AnilistSyncService {
 		return entries;
 	}
 
+	// scan the vault for existing notes by matching the ` - sourceId.md` pattern
 	private getExistingNotes(folder: string): Map<string, TFile> {
 		const files = this.app.vault.getFiles();
 		const result = new Map<string, TFile>();
@@ -154,12 +160,15 @@ export class AnilistSyncService {
 		return result;
 	}
 
+	// handle a note that already exists: either update from remote or check for conflicts
 	private async handleExistingEntry(entry: AnilistEntry, file: TFile, sourceId: string): Promise<void> {
+		// one-way sync: just overwrite local with remote
 		if (!this.settings.anilistSync.twoWaySync) {
 			await this.updateNoteFromRemote(entry, file);
 			return;
 		}
 
+		// two-way: read local frontmatter and compare against remote
 		const content = await this.app.vault.read(file);
 		const frontmatter = this.parseFrontmatter(content);
 		const localStatus: string | null = typeof frontmatter['status'] === 'string' ? frontmatter['status'] : null;
@@ -179,6 +188,7 @@ export class AnilistSyncService {
 
 		if (!hasConflict) return;
 
+		// present the user with a conflict resolution modal
 		const conflict: SyncConflict = {
 			sourceId,
 			title: this.pickTitle(entry.media.title),
@@ -194,8 +204,14 @@ export class AnilistSyncService {
 
 		return new Promise((resolve) => {
 			const modal = new ConflictModal(this.app, conflict, (resolution: ConflictResolution) => {
-				void this.applyResolution(resolution, entry, file, conflict);
-				resolve();
+				void (async () => {
+					try {
+						await this.applyResolution(resolution, entry, file, conflict);
+					} catch (err) {
+						console.error('Babylon: Conflict resolution failed', err);
+					}
+					resolve();
+				})();
 			});
 			modal.open();
 		});
@@ -220,6 +236,7 @@ export class AnilistSyncService {
 		}
 	}
 
+	// overwrite the local note's frontmatter with remote data
 	private async updateNoteFromRemote(entry: AnilistEntry, file: TFile): Promise<void> {
 		const content = await this.app.vault.read(file);
 		const frontmatter = this.parseFrontmatter(content);
@@ -234,9 +251,10 @@ export class AnilistSyncService {
 		await this.app.vault.modify(file, newContent);
 	}
 
+	// push local changes back to the anilist server
 	private async pushToAnilist(entry: AnilistEntry, conflict: SyncConflict): Promise<void> {
 		const anilistStatus = conflict.localStatus
-			? conflict.localStatus.toUpperCase().replace(' ', '_')
+			? this.mapBabylonStatus(conflict.localStatus)
 			: null;
 
 		await requestAnilist(UPDATE_MUTATION, {
@@ -249,6 +267,7 @@ export class AnilistSyncService {
 		}, this.token);
 	}
 
+	// create a new note from a remote entry that doesn't exist locally yet
 	private async createNoteFromEntry(entry: AnilistEntry, sourceId: string): Promise<void> {
 		const folder = this.settings.media.anime?.folder || 'Content/Anime';
 		const title = this.pickTitle(entry.media.title);
@@ -282,7 +301,6 @@ export class AnilistSyncService {
 			lastSyncAt: new Date().toISOString(),
 		};
 
-		const { TemplateService } = await import('./TemplateService');
 		const templateService = new TemplateService(this.app);
 		const rendered = await templateService.render(
 			this.settings.media.anime?.templatePath ?? '',
@@ -303,8 +321,8 @@ export class AnilistSyncService {
 			if (!exists) {
 				try {
 					await this.app.vault.createFolder(current);
-				} catch {
-					// ignore
+				} catch (e) {
+					console.warn('Babylon: Failed to create folder', current, e);
 				}
 			}
 		}
@@ -337,6 +355,7 @@ export class AnilistSyncService {
 		return result;
 	}
 
+	// serialize frontmatter back to yaml, preserving the original body
 	private stringifyFrontmatter(frontmatter: Record<string, unknown>, content: string): string {
 		let yaml = '---\n';
 		for (const [key, val] of Object.entries(frontmatter)) {
@@ -350,14 +369,16 @@ export class AnilistSyncService {
 		}
 		yaml += '---\n';
 
-		const body = content.replace(/^---\n[\s\S]*?\n---\n/, '');
-		return yaml + body;
+		const match = content.match(/^---\n[\s\S]*?\n---\n/);
+		const body = match ? content.slice(match[0].length) : content;
+		return yaml + body.trim();
 	}
 
 	private pickTitle(title: { romaji?: string | null; english?: string | null; native?: string | null }): string {
 		return title.english ?? title.romaji ?? title.native ?? 'Unknown';
 	}
 
+	// convert anilist status string to babylon internal status
 	private mapAnilistStatus(status: string): string {
 		const map: Record<string, string> = {
 			'current': 'in_progress',
@@ -370,6 +391,7 @@ export class AnilistSyncService {
 		return map[status?.toLowerCase()] ?? status?.toLowerCase() ?? 'not_started';
 	}
 
+	// convert babylon internal status to anilist's MediaListStatus enum
 	private mapBabylonStatus(status: string | null): string | null {
 		const map: Record<string, string> = {
 			'in_progress': 'CURRENT',

@@ -1,9 +1,10 @@
-import { Modal, Notice, Setting } from 'obsidian';
+import { Modal, Notice, Setting, TFile } from 'obsidian';
 import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import type { MediaType, SupportedLocale } from '../../types';
 import { getFields } from '../../fields/FieldRegistry';
 import { addFolderPicker } from './FolderPicker';
+import { ConfirmModal } from '../../ui/modals/ConfirmModal';
 
 export class GenerateTemplateModal extends Modal {
 	private plugin: BabylonPlugin;
@@ -65,9 +66,32 @@ export class GenerateTemplateModal extends Modal {
 		const settings = this.plugin.settings.media[this.mediaType];
 		if (!settings) return;
 
+		const content = this.buildTemplateContent(settings);
+		const filePath = this.folder
+			? `${this.folder.replace(/^\/+|\/+$/g, '')}/${this.fileName}`
+			: this.fileName;
+
+		const existing = this.app.vault.getAbstractFileByPath(filePath);
+		if (existing) {
+			new ConfirmModal(
+				this.app,
+				tr('file-exists'),
+				filePath,
+				() => void this.writeTemplate(filePath, content),
+			).open();
+		} else {
+			await this.writeTemplate(filePath, content);
+		}
+	}
+
+	private buildTemplateContent(settings: { selectedFields?: string[]; customFieldNames?: string[] }): string {
 		const allFields = getFields(this.mediaType);
-		const selectedFieldKeys = settings.selectedFields ?? [];
+		const knownKeys = new Set(allFields.map((f) => f.key));
 		const customFieldKeys = settings.customFieldNames ?? [];
+
+		const selectedFieldKeys = (settings.selectedFields ?? []).filter(
+			(f) => knownKeys.has(f) || customFieldKeys.includes(f),
+		);
 
 		const header = this.language === 'en'
 			? [
@@ -81,9 +105,9 @@ export class GenerateTemplateModal extends Modal {
 
 		const frontmatterLines = [...header];
 		for (const key of selectedFieldKeys) {
-			const def = allFields.find((f) => f.key === key);
-			const placeholder = def?.key ?? key;
-			frontmatterLines.push(`${key}: {{${placeholder}}}`);
+			if (knownKeys.has(key)) {
+				frontmatterLines.push(`${key}: {{${key}}}`);
+			}
 		}
 		for (const key of customFieldKeys) {
 			frontmatterLines.push(`${key}: {{${key}}}`);
@@ -91,15 +115,22 @@ export class GenerateTemplateModal extends Modal {
 
 		const bodyLines: string[] = [];
 		const isEn = this.language === 'en';
-
-		// template summary
-		const fieldNames = [...selectedFieldKeys, ...customFieldKeys];
+		const fieldNames = [...new Set([...selectedFieldKeys, ...customFieldKeys])];
 		const fieldsHelp = fieldNames.join(', ');
 
 		if (isEn) {
 			bodyLines.push(
 				'',
 				'---',
+				'',
+				'# {{title}}',
+				'',
+				'> {{description}}',
+				'',
+				'**Year:** {{year}} | **Format:** {{format}} | **Episodes:** {{episodes}}',
+				'**Score:** {{averageScore}}',
+				'',
+				'[View on AniList]({{siteUrl}})',
 				'',
 				'## Template usage',
 				'',
@@ -115,6 +146,15 @@ export class GenerateTemplateModal extends Modal {
 				'',
 				'---',
 				'',
+				'# {{title}}',
+				'',
+				'> {{description}}',
+				'',
+				'**Год:** {{year}} | **Формат:** {{format}} | **Эпизодов:** {{episodes}}',
+				'**Оценка:** {{averageScore}}',
+				'',
+				'[Посмотреть на AniList]({{siteUrl}})',
+				'',
 				'## Использование шаблона',
 				'',
 				`Плейсхолдеры вида \`{{title}}\` заменяются данными при создании заметок.`,
@@ -126,20 +166,28 @@ export class GenerateTemplateModal extends Modal {
 			);
 		}
 
-		const content = [
+		return [
 			'---',
 			...frontmatterLines,
 			'---',
 			...bodyLines,
 		].join('\n');
+	}
 
-		const filePath = this.folder
-			? `${this.folder.replace(/^\/+|\/+$/g, '')}/${this.fileName}`
-			: this.fileName;
+	private async writeTemplate(filePath: string, content: string): Promise<void> {
+		const settings = this.plugin.settings.media[this.mediaType];
+		if (!settings) return;
 
 		try {
 			await this.ensureFolder(this.folder);
-			await this.app.vault.create(filePath, content);
+
+			const existing = this.app.vault.getAbstractFileByPath(filePath);
+			if (existing instanceof TFile) {
+				await this.app.vault.modify(existing, content);
+			} else {
+				await this.app.vault.create(filePath, content);
+			}
+
 			settings.templatePath = filePath;
 			await this.plugin.saveSettings();
 			new Notice(tr('gen-template-success', { path: filePath }));
@@ -162,8 +210,8 @@ export class GenerateTemplateModal extends Modal {
 			if (!exists) {
 				try {
 					await this.app.vault.createFolder(current);
-				} catch {
-					// ignore
+				} catch (e) {
+					console.warn('Babylon: Failed to create folder', current, e);
 				}
 			}
 		}

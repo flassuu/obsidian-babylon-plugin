@@ -2,11 +2,13 @@ import { App, Notice, SuggestModal } from 'obsidian';
 import type { ContentProvider, MediaType, SearchResult } from '../../types';
 import { tr } from '../../i18n';
 
+// search-and-select modal backed by a ContentProvider
 export class AddContentModal extends SuggestModal<SearchResult> {
 	private provider: ContentProvider;
 	private mediaType: MediaType;
 	onSubmit: ((result: SearchResult) => void) | null = null;
 	private lastQuery = '';
+	private debounceTimer: number | null = null;
 
 	constructor(
 		app: App,
@@ -24,17 +26,25 @@ export class AddContentModal extends SuggestModal<SearchResult> {
 		]);
 	}
 
+	// fetch suggestions with 300ms debounce to avoid rate-limiting the api
 	async getSuggestions(query: string): Promise<SearchResult[]> {
 		if (query.length < 2) return [];
 		this.lastQuery = query;
 
-		try {
-			return await this.provider.search(query);
-		} catch (err) {
-			console.error('Babylon: Search failed', err);
-			new Notice(tr('search-error'));
-			return [];
-		}
+		return new Promise((resolve) => {
+			if (this.debounceTimer) window.clearTimeout(this.debounceTimer);
+			this.debounceTimer = window.setTimeout(() => {
+				void (async () => {
+					try {
+						resolve(await this.provider.search(query));
+					} catch (err) {
+						console.error('Babylon: Search failed', err);
+						new Notice(tr('search-error'));
+						resolve([]);
+					}
+				})();
+			}, 300);
+		});
 	}
 
 	renderSuggestion(result: SearchResult, el: HTMLElement): void {

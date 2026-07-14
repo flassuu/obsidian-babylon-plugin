@@ -122,7 +122,7 @@ export default class BabylonPlugin extends Plugin {
 			});
 		}
 
-		if (this.settings.anilistSync.syncOnStartup && this.settings.anilistAuth.accessToken) {
+		if (this.settings.anilistSync.enabled && this.settings.anilistSync.syncOnStartup && this.settings.anilistAuth.accessToken) {
 			void this.runAnilistSync();
 		}
 	}
@@ -147,7 +147,7 @@ export default class BabylonPlugin extends Plugin {
 		if (animeSettings) {
 			const selected = animeSettings.selectedFields ?? [];
 			const custom = animeSettings.customFieldNames ?? [];
-			const allKeys = [...selected, ...custom];
+			const allKeys = [...new Set([...selected, ...custom])];
 			this.anilistProvider.setRequestedFields(allKeys, this.settings.anilistAuth.accessToken ? true : false);
 		}
 	}
@@ -225,7 +225,14 @@ export default class BabylonPlugin extends Plugin {
 			this.app,
 			this.settings.anilistAuth.accessToken,
 			(details) => {
-				void this.contentService.createNote('anime', details, this.settings);
+				void (async () => {
+					try {
+						await this.contentService.createNote('anime', details, this.settings);
+					} catch (err) {
+						console.error('Babylon: Error creating note from list', err);
+						new Notice(tr('create-note-error'));
+					}
+				})();
 			},
 			(sourceId) => this.anilistProvider.fetchDetails(sourceId),
 		);
@@ -233,6 +240,7 @@ export default class BabylonPlugin extends Plugin {
 	}
 
 	private async runAnilistSync(): Promise<void> {
+		if (!this.settings.anilistSync.enabled) return;
 		if (!this.settings.anilistAuth.accessToken) {
 			new Notice('Anilist token not configured in settings.');
 			return;

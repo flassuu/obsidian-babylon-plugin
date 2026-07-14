@@ -3,10 +3,12 @@ import { requestUrl } from 'obsidian';
 const ANILIST_API = 'https://graphql.anilist.co';
 const ANILIST_AUTH_URL = 'https://anilist.co/api/v2/oauth/authorize';
 
+// build OAuth authorization url for the given client id
 export function getAnilistAuthUrl(clientId: string): string {
 	return `${ANILIST_AUTH_URL}?client_id=${clientId}&response_type=token`;
 }
 
+// generic json fetcher used by providers — wraps obsidian's requestUrl
 export async function fetchJson(
 	url: string,
 	method: 'GET' | 'POST',
@@ -18,9 +20,15 @@ export async function fetchJson(
 
 	const resp = await requestUrl({ url, method, headers, body, throw: false });
 	if (resp.status >= 400) throw new Error(`HTTP ${resp.status}: ${resp.text.slice(0, 200)}`);
-	return resp.json;
+	const json = resp.json as Record<string, unknown>;
+	const errors = json?.['errors'] as Array<Record<string, unknown>> | undefined;
+	if (errors && errors.length > 0) {
+		throw new Error(errors[0]?.['message'] as string ?? 'API error');
+	}
+	return json;
 }
 
+// raw anilist graphql client — handles both http errors and graphql-level errors
 async function requestRaw(query: string, variables: Record<string, unknown>, token?: string): Promise<Record<string, unknown>> {
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 	if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -46,6 +54,7 @@ async function requestRaw(query: string, variables: Record<string, unknown>, tok
 	return json;
 }
 
+// convenience wrapper that returns just the data portion
 export async function requestAnilist(query: string, variables: Record<string, unknown>, token?: string): Promise<unknown> {
 	const json = await requestRaw(query, variables, token);
 	return json['data'];
@@ -79,6 +88,7 @@ query {
   }
 }`;
 
+// verify that a token is valid and return basic user stats
 export async function testAnilistToken(token: string): Promise<AnilistTestResult> {
 	try {
 		const json = await requestRaw(STATS_QUERY, {}, token);
@@ -106,6 +116,7 @@ export async function testAnilistToken(token: string): Promise<AnilistTestResult
 	}
 }
 
+// fetch the authenticated user's anilist user id
 export async function fetchAnilistUserId(token: string): Promise<number> {
 	const json = await requestRaw('query { Viewer { id } }', {}, token);
 	const data = json['data'] as Record<string, unknown> | undefined;
