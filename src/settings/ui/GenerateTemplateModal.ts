@@ -111,21 +111,32 @@ export class GenerateTemplateModal extends Modal {
 				'# Отредактируйте этот файл, чтобы настроить формат заметок.',
 			];
 
+		// build a map of key -> type for format-aware template generation
+		const typeMap = new Map(allFields.map((f) => [f.key, f.type]));
+		const fieldLine = (key: string): string => {
+			if (key === 'advancedScores') return '{{advancedScore_List}}';
+			const type = typeMap.get(key) ?? 'string';
+			if (type === 'number' || type === 'boolean') return `${key}: {{${key}}}`;
+			if (type === 'array') {
+				if (key === 'genres') return 'genres:\n{{genre_list}}';
+				if (key === 'studios') return 'studios:\n{{studio_list}}';
+				return `${key}: {{${key}}}`;
+			}
+			if (type === 'date') return `${key}: "{{${key}}}"`;
+			return `${key}: "{{${key}}}"`;
+		};
+
 		const frontmatterLines = [...header];
 		const added = new Set<string>();
 		for (const key of selectedFieldKeys) {
 			if (knownKeys.has(key) && !added.has(key)) {
-				if (key === 'advancedScores') {
-					frontmatterLines.push('{{advancedScore_List}}');
-				} else {
-					frontmatterLines.push(`${key}: {{${key}}}`);
-				}
+				frontmatterLines.push(fieldLine(key));
 				added.add(key);
 			}
 		}
 		for (const key of customFieldKeys) {
 			if (!added.has(key)) {
-				frontmatterLines.push(`${key}: {{${key}}}`);
+				frontmatterLines.push(`${key}: "{{${key}}}"`);
 				added.add(key);
 			}
 		}
