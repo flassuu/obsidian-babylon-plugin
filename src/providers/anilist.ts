@@ -241,6 +241,9 @@ export class AnilistProvider implements ContentProvider {
 		const details: MediaDetails = {
 			title: pickTitle(title),
 			originalTitle: pickOriginalTitle(title),
+			title_en: title?.english ?? null,
+			title_jp: title?.native ?? null,
+			title_ro: title?.romaji ?? null,
 			year: (media['seasonYear'] as number) ?? null,
 			description: media['description'] ? stripHtml(media['description'] as string) : null,
 			cover: (media['coverImage'] as Record<string, string>)?.['large'] ?? null,

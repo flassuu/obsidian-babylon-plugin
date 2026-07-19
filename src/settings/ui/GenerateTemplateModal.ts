@@ -89,9 +89,17 @@ export class GenerateTemplateModal extends Modal {
 		const knownKeys = new Set(allFields.map((f) => f.key));
 		const customFieldKeys = settings.customFieldNames ?? [];
 
-		const selectedFieldKeys = (settings.selectedFields ?? []).filter(
-			(f) => knownKeys.has(f) || customFieldKeys.includes(f),
-		);
+		const fieldOrder = new Map(allFields.map((f, i) => [f.key, i]));
+		const selectedFieldKeys = (settings.selectedFields ?? [])
+			.filter((f) => knownKeys.has(f) || customFieldKeys.includes(f))
+			.sort((a, b) => {
+				const oa = fieldOrder.get(a);
+				const ob = fieldOrder.get(b);
+				if (oa !== undefined && ob !== undefined) return oa - ob;
+				if (oa !== undefined) return -1;
+				if (ob !== undefined) return 1;
+				return 0;
+			});
 
 		const header = this.language === 'en'
 			? [
