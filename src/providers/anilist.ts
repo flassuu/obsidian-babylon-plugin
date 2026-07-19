@@ -111,12 +111,13 @@ export class AnilistProvider implements ContentProvider {
 	// check whether the user has requested any personal (tracking) fields
 	private needsMediaListEntry(): boolean {
 		if (!this.hasToken) return false;
-		const personalKeys = ['progress', 'score', 'myStatus', 'startedAt', 'completedAt', 'notes', 'repeat', 'progressVolumes'];
+		const personalKeys = ['progress', 'score', 'myStatus', 'startedAt', 'completedAt', 'notes', 'repeat', 'progressVolumes', 'advancedScores'];
 		return this.requestedFields.some((k) => personalKeys.includes(k));
 	}
 
 	// build the mediaListEntry sub-query for personal tracking data
 	private buildMediaListEntryFragment(): string {
+		const hasAdvanced = this.requestedFields.includes('advancedScores');
 		return `mediaListEntry {
       id
       status
@@ -127,6 +128,7 @@ export class AnilistProvider implements ContentProvider {
       notes
       startedAt { year month day }
       completedAt { year month day }
+      ${hasAdvanced ? 'advancedScores' : ''}
     }`;
 	}
 
@@ -298,6 +300,21 @@ export class AnilistProvider implements ContentProvider {
 			if (sa) details['startedAt'] = sa;
 			const ca = mle['completedAt'] as Record<string, unknown> | undefined;
 			if (ca) details['completedAt'] = ca;
+
+			// flatten advancedScores into individual fields
+			const advScores = mle['advancedScores'] as Record<string, unknown> | undefined;
+			if (advScores) {
+				details['advancedScores'] = advScores;
+				for (const [key, val] of Object.entries(advScores)) {
+					const camel = key
+						.replace(/&/g, ' and ')
+						.replace(/[^a-zA-Z0-9\s]/g, '')
+						.split(/\s+/)
+						.map((w, i) => i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+						.join('');
+					details[`advancedScore_${camel}`] = val;
+				}
+			}
 		}
 
 		// extra requested custom fields from media directly

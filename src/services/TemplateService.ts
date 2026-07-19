@@ -40,6 +40,20 @@ function buildValueMap(details: MediaDetails): Record<string, string> {
 			map['studio_list'] = val.map((s: string) => `  - "${s}"`).join('\n');
 			continue;
 		}
+		if (key === 'advancedScores' && typeof val === 'object' && val !== null) {
+			const adv = val as Record<string, unknown>;
+			const lines = Object.entries(adv).map(([k, v]) => {
+				const camel = k
+					.replace(/&/g, ' and ')
+					.replace(/[^a-zA-Z0-9\s]/g, '')
+					.split(/\s+/)
+					.map((w, i) => i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+					.join('');
+				return `${camel}: ${v}`;
+			});
+			map['advancedScore_List'] = lines.join('\n');
+			continue;
+		}
 		map[key] = flattenValue(val);
 	}
 	return map;

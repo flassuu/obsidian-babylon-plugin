@@ -107,7 +107,11 @@ export class GenerateTemplateModal extends Modal {
 		const added = new Set<string>();
 		for (const key of selectedFieldKeys) {
 			if (knownKeys.has(key) && !added.has(key)) {
-				frontmatterLines.push(`${key}: {{${key}}}`);
+				if (key === 'advancedScores') {
+					frontmatterLines.push('{{advancedScore_List}}');
+				} else {
+					frontmatterLines.push(`${key}: {{${key}}}`);
+				}
 				added.add(key);
 			}
 		}

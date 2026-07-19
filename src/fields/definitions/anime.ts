@@ -390,6 +390,15 @@ export const animeFields: FieldDefinition[] = [
 		graphql: 'progressVolumes',
 		always: false,
 	},
+	{
+		key: 'advancedScores',
+		labelKey: 'field-advanced-scores',
+		category: 'personal',
+		type: 'object',
+		personal: true,
+		graphql: 'advancedScores',
+		always: false,
+	},
 
 	// ── Media (extra content metadata) ────────────────────
 	{
