@@ -4,7 +4,13 @@ import type { MediaDetails } from '../types';
 // convert a value to a flat string for template substitution
 function flattenValue(val: unknown): string {
 	if (val === null || val === undefined) return '';
-	if (Array.isArray(val)) return val.map(String).join(', ');
+	if (Array.isArray(val)) {
+		if (val.length === 0) return '';
+		return val.map((v) => {
+			if (typeof v === 'object' && v !== null) return JSON.stringify(v);
+			return String(v);
+		}).join(', ');
+	}
 	if (typeof val === 'object') {
 		const obj = val as Record<string, unknown>;
 		if ('year' in obj && ('month' in obj || 'day' in obj)) {
@@ -71,7 +77,8 @@ export class TemplateService {
 
 		const values = buildValueMap(details);
 		return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
-			return values[key] ?? `{{${key}}}`;
+			const val = values[key];
+			return val !== undefined && val !== '' ? val : `{{${key}}}`;
 		});
 	}
 
