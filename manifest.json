@@ -4,7 +4,7 @@
 	"version": "0.1.0",
 	"minAppVersion": "1.12.0",
 	"description": "Universal media library plugin — track games, anime, books, movies, series with metadata from external APIs and bidirectional sync.",
-	"author": "",
-	"authorUrl": "",
+	"author": "flassuu",
+	"authorUrl": "https://github.com/flassuu",
 	"isDesktopOnly": false
 }
