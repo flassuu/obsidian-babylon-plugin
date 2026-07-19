@@ -30,14 +30,13 @@ function flattenValue(val: unknown): string {
 function buildValueMap(details: MediaDetails): Record<string, string> {
 	const map: Record<string, string> = {};
 	for (const [key, val] of Object.entries(details)) {
-		if (key === 'genres' && Array.isArray(val)) {
-			map['genres'] = val.join(', ');
-			map['genre_list'] = val.map((g: string) => `  - "${g}"`).join('\n');
-			continue;
-		}
-		if (key === 'studios' && Array.isArray(val)) {
-			map['studios'] = val.join(', ');
-			map['studio_list'] = val.map((s: string) => `  - "${s}"`).join('\n');
+		if (Array.isArray(val)) {
+			map[key] = val.join(', ');
+			map[`${key}_list`] = val.map((v) => {
+				if (typeof v === 'string') return `  - "${v}"`;
+				if (typeof v === 'object' && v !== null) return `  - ${JSON.stringify(v)}`;
+				return `  - ${String(v)}`;
+			}).join('\n');
 			continue;
 		}
 		if (key === 'advancedScores' && typeof val === 'object' && val !== null) {
