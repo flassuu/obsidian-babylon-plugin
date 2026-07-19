@@ -15,8 +15,8 @@ function flattenValue(val: unknown): string {
 		const obj = val as Record<string, unknown>;
 		if ('year' in obj && ('month' in obj || 'day' in obj)) {
 			const y = typeof obj['year'] === 'number' ? String(obj['year']) : '';
-			const m = typeof obj['month'] === 'number' ? String(obj['month']) : '';
-			const d = typeof obj['day'] === 'number' ? String(obj['day']) : '';
+			const m = typeof obj['month'] === 'number' ? String(obj['month']).padStart(2, '0') : '';
+			const d = typeof obj['day'] === 'number' ? String(obj['day']).padStart(2, '0') : '';
 			return [y, m, d].filter(Boolean).join('-');
 		}
 		return JSON.stringify(val);
@@ -37,6 +37,10 @@ function buildValueMap(details: MediaDetails): Record<string, string> {
 				if (typeof v === 'object' && v !== null) return `  - ${JSON.stringify(v)}`;
 				return `  - ${String(v)}`;
 			}).join('\n');
+			continue;
+		}
+		if (key === 'description' && typeof val === 'string') {
+			map[key] = val.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
 			continue;
 		}
 		if (key === 'advancedScores' && typeof val === 'object' && val !== null) {
