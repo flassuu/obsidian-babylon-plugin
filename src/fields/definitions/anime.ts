@@ -78,6 +78,15 @@ export const animeFields: FieldDefinition[] = [
 		always: false,
 	},
 	{
+		key: 'title_ru',
+		labelKey: 'field-title-ru',
+		category: 'core',
+		type: 'string',
+		personal: false,
+		graphql: '',
+		always: false,
+	},
+	{
 		key: 'year',
 		labelKey: 'field-year',
 		category: 'core',
@@ -373,6 +382,15 @@ export const animeFields: FieldDefinition[] = [
 		always: false,
 	},
 	{
+		key: 'advancedScores',
+		labelKey: 'field-advanced-scores',
+		category: 'personal',
+		type: 'object',
+		personal: true,
+		graphql: 'advancedScores',
+		always: false,
+	},
+	{
 		key: 'startedAt',
 		labelKey: 'field-started-at',
 		category: 'personal',
@@ -415,15 +433,6 @@ export const animeFields: FieldDefinition[] = [
 		type: 'number',
 		personal: true,
 		graphql: 'progressVolumes',
-		always: false,
-	},
-	{
-		key: 'advancedScores',
-		labelKey: 'field-advanced-scores',
-		category: 'personal',
-		type: 'object',
-		personal: true,
-		graphql: 'advancedScores',
 		always: false,
 	},
 
