@@ -116,13 +116,12 @@ export class GenerateTemplateModal extends Modal {
 		const fieldLine = (key: string): string => {
 			if (key === 'advancedScores') return '{{advancedScore_List}}';
 			const type = typeMap.get(key) ?? 'string';
-			if (type === 'number' || type === 'boolean') return `${key}: {{${key}}}`;
+			if (type === 'number' || type === 'boolean' || type === 'date') return `${key}: {{${key}}}`;
 			if (type === 'array') {
 				if (key === 'genres') return 'genres:\n{{genre_list}}';
 				if (key === 'studios') return 'studios:\n{{studio_list}}';
 				return `${key}: {{${key}}}`;
 			}
-			if (type === 'date') return `${key}: "{{${key}}}"`;
 			return `${key}: "{{${key}}}"`;
 		};
 

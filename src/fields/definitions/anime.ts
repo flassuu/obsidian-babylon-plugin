@@ -150,6 +150,15 @@ export const animeFields: FieldDefinition[] = [
 		always: true,
 	},
 	{
+		key: 'synonyms',
+		labelKey: 'field-synonyms',
+		category: 'core',
+		type: 'array',
+		personal: false,
+		graphql: '',
+		always: true,
+	},
+	{
 		key: 'bannerImage',
 		labelKey: 'field-banner',
 		category: 'core',
