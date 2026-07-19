@@ -3,6 +3,7 @@ import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import type { MediaType, SupportedLocale } from '../../types';
 import { getFields } from '../../fields/FieldRegistry';
+import type { ObsidianFormat } from '../../fields/types';
 import { addFolderPicker } from './FolderPicker';
 import { ConfirmModal } from '../../ui/modals/ConfirmModal';
 
@@ -111,13 +112,18 @@ export class GenerateTemplateModal extends Modal {
 				'# Отредактируйте этот файл, чтобы настроить формат заметок.',
 			];
 
-		// build a map of key -> type for format-aware template generation
-		const typeMap = new Map(allFields.map((f) => [f.key, f.type]));
+		// resolve format from field def if present, else derive from type
+		const fmtFor = (key: string): ObsidianFormat => {
+			const def = allFields.find((f) => f.key === key);
+			if (def?.format) return def.format;
+			const map: Record<string, ObsidianFormat> = { string: 'text', number: 'number', boolean: 'checkbox', date: 'date', array: 'list', object: 'text' };
+			return map[def?.type ?? 'string'] ?? 'text';
+		};
 		const fieldLine = (key: string): string => {
 			if (key === 'advancedScores') return '{{advancedScore_List}}';
-			const type = typeMap.get(key) ?? 'string';
-			if (type === 'number' || type === 'boolean' || type === 'date') return `${key}: {{${key}}}`;
-			if (type === 'array') return `${key}:\n{{${key}_list}}`;
+			const fmt = fmtFor(key);
+			if (fmt === 'number' || fmt === 'checkbox' || fmt === 'date' || fmt === 'datetime') return `${key}: {{${key}}}`;
+			if (fmt === 'list') return `${key}:\n{{${key}_list}}`;
 			return `${key}: "{{${key}}}"`;
 		};
 
