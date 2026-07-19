@@ -66,6 +66,7 @@ export class FieldSelector {
 		const byCategory = getFieldsByCategory(this.mediaType);
 		const fields = byCategory.get(categoryId) ?? [];
 		for (const f of fields) {
+			if (f.advanced) continue;
 			const disabled = f.personal && !this.personalEnabled;
 			if (disabled) continue;
 			if (select) {
@@ -84,6 +85,7 @@ export class FieldSelector {
 		const byCategory = getFieldsByCategory(this.mediaType);
 		const fields = byCategory.get(categoryId) ?? [];
 		const allSelected = fields.every((f) => {
+			if (f.advanced) return true;
 			const disabled = f.personal && !this.personalEnabled;
 			return disabled || this.selected.has(f.key);
 		});
@@ -141,6 +143,7 @@ export class FieldSelector {
 			this.catGrids.set(cat.id, grid);
 
 			for (const field of fields) {
+				if (field.advanced) continue;
 				const isPersonal = field.personal;
 				const disabled = isPersonal && !this.personalEnabled;
 				const checked = this.selected.has(field.key);

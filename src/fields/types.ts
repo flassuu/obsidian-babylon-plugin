@@ -28,6 +28,7 @@ export interface FieldDefinition {
 	type: 'string' | 'number' | 'array' | 'date' | 'boolean' | 'object';
 	format?: ObsidianFormat;
 	personal: boolean;
+	advanced?: boolean;
 	provider?: ProviderId;
 	graphql: string;
 	always?: boolean;
