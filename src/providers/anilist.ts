@@ -51,21 +51,6 @@ function pickOriginalTitle(title: { romaji?: string; english?: string; native?: 
 	return title.romaji ?? title.native ?? title.english ?? title.userPreferred ?? 'Unknown';
 }
 
-// extract russian title from description — looks for a short cyrillic fragment delimited by ---
-function extractRussianTitle(description: string | null): string | null {
-	if (!description) return null;
-	const clean = stripHtml(description);
-	const parts = clean.split(/\n-{3,}\n|\n—\n|\n–\n|——|—|\n{2,}/);
-	for (const part of parts) {
-		const trimmed = part.trim();
-		if (!trimmed || trimmed.length > 120) continue;
-		const cyr = (trimmed.match(/[а-яёА-ЯЁ]/g) || []).length;
-		const total = trimmed.replace(/\s/g, '').length;
-		if (total > 0 && cyr / total > 0.4) return trimmed;
-	}
-	return null;
-}
-
 export class AnilistProvider implements ContentProvider {
 	id: ProviderId = 'anilist';
 	mediaTypes: MediaType[] = ['anime'];
@@ -253,16 +238,14 @@ export class AnilistProvider implements ContentProvider {
 		const studioNodes = (studios['nodes'] as Array<Record<string, string>>) ?? [];
 		const studioNames = studioNodes.map((n) => n['name']).filter(Boolean) as string[];
 
-			const rawDescription = media['description'] ? stripHtml(media['description'] as string) : null;
-		const details: MediaDetails = {
+			const details: MediaDetails = {
 			title: pickTitle(title),
 			originalTitle: pickOriginalTitle(title),
 			title_en: title?.english ?? null,
 			title_jp: title?.native ?? null,
 			title_ro: title?.romaji ?? null,
-			title_ru: extractRussianTitle(media['description'] as string | null),
 			year: (media['seasonYear'] as number) ?? null,
-			description: rawDescription,
+			description: media['description'] ? stripHtml(media['description'] as string) : null,
 			cover: (media['coverImage'] as Record<string, string>)?.['large'] ?? null,
 			genres: (media['genres'] as string[]) ?? [],
 			studios: studioNames,
@@ -290,6 +273,13 @@ export class AnilistProvider implements ContentProvider {
 			if (media[key] !== undefined) {
 				details[key] = media[key];
 			}
+		}
+
+		// extract russian title from synonyms if available
+		const syns = details['synonyms'] as string[] | undefined;
+		if (syns) {
+			const ru = syns.find((s) => /[а-яёА-ЯЁ]/.test(s));
+			if (ru) details['title_ru'] = ru;
 		}
 
 		// join tag names into a comma-separated string
