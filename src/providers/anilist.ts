@@ -8,7 +8,7 @@ const ANILIST_API = 'https://graphql.anilist.co';
 // fields always needed for search results
 const SEARCH_GRAPHQL = `
   id
-  title { romaji english native }
+  title { romaji english native userPreferred }
   coverImage { large }
   seasonYear
   format
@@ -23,7 +23,7 @@ const SEARCH_GRAPHQL = `
 // fields always needed for detail result (core rendering)
 const ALWAYS_DETAIL_GRAPHQL = `
   id
-  title { romaji english native }
+  title { romaji english native userPreferred }
   coverImage { extraLarge large medium color }
   seasonYear
   format
@@ -43,12 +43,12 @@ query ($search: String, $page: Int, $perPage: Int) {
     media(search: $search, type: ANIME) {
 `.trim();
 
-function pickTitle(title: { romaji?: string; english?: string; native?: string }): string {
-	return title.english ?? title.romaji ?? title.native ?? 'Unknown';
+function pickTitle(title: { romaji?: string; english?: string; native?: string; userPreferred?: string }): string {
+	return title.english ?? title.romaji ?? title.native ?? title.userPreferred ?? 'Unknown';
 }
 
-function pickOriginalTitle(title: { romaji?: string; english?: string; native?: string }): string {
-	return title.romaji ?? title.native ?? title.english ?? 'Unknown';
+function pickOriginalTitle(title: { romaji?: string; english?: string; native?: string; userPreferred?: string }): string {
+	return title.romaji ?? title.native ?? title.english ?? title.userPreferred ?? 'Unknown';
 }
 
 export class AnilistProvider implements ContentProvider {
@@ -59,11 +59,13 @@ export class AnilistProvider implements ContentProvider {
 	private requestedFields: string[] = [];
 	private hasToken = false;
 	private accessToken = '';
+	private badFieldKeys = new Set<string>();
 
 	// tell the provider which fields the user wants in the graphql query
 	setRequestedFields(fields: string[], hasToken: boolean): void {
 		this.requestedFields = fields;
 		this.hasToken = hasToken;
+		this.badFieldKeys.clear();
 	}
 
 	setAccessToken(token: string): void {
@@ -86,14 +88,9 @@ export class AnilistProvider implements ContentProvider {
 			ALWAYS_DETAIL_GRAPHQL.split('\n').map((l) => l.trim().split(/\s/)[0]).filter(Boolean),
 		);
 
-		// known composite AniList types that need sub-selection but aren't in the field definitions
-		const COMPOSITE_FIELDS: Record<string, string> = {
-			'startDate': 'startDate { year month day }',
-			'endDate': 'endDate { year month day }',
-			'nextAiringEpisode': 'nextAiringEpisode { airingAt timeUntilAiring episode }',
-		};
-
 		for (const key of this.requestedFields) {
+			if (this.badFieldKeys.has(key)) continue;
+
 			const def = allDefs.find((f) => f.key === key);
 			if (def && def.graphql && !def.personal && !handled.has(def.graphql)) {
 				fragments.push(def.graphql);
@@ -103,14 +100,8 @@ export class AnilistProvider implements ContentProvider {
 				const simple = key.replace(/[^a-zA-Z0-9_]/g, '');
 				if (!simple || handled.has(simple) || alwaysFields.has(simple)) continue;
 
-				const composite = COMPOSITE_FIELDS[simple];
-				if (composite) {
-					fragments.push(composite);
-					handled.add(simple);
-				} else {
-					fragments.push(simple);
-					handled.add(simple);
-				}
+				fragments.push(simple);
+				handled.add(simple);
 			}
 		}
 
@@ -137,6 +128,36 @@ export class AnilistProvider implements ContentProvider {
       startedAt { year month day }
       completedAt { year month day }
     }`;
+	}
+
+	// if the error mentions a missing field on Media, resolve it to a requestedFields key and add to bad list
+	private addBadFieldFromError(err: unknown): boolean {
+		const msg = String(err);
+		const match = msg.match(/Cannot query field ["\\]+(\w+)["\\]+ on type/);
+		if (!match) return false;
+
+		const fieldName = match[1];
+		const allDefs = getFields('anime');
+
+		for (const key of this.requestedFields) {
+			const def = allDefs.find((f) => f.key === key);
+			let gqlName: string | null = null;
+
+			if (def && def.graphql) {
+				gqlName = def.graphql.split(/[\s(]/)[0] ?? null;
+			} else if (!def) {
+				gqlName = key.replace(/[^a-zA-Z0-9_]/g, '');
+			}
+
+			if (gqlName && gqlName === fieldName) {
+				console.warn('Babylon: removing invalid field', key, `(${fieldName})`);
+				this.badFieldKeys.add(key);
+				return true;
+			}
+		}
+
+		// field not found in requestedFields — maybe it's in ALWAYS_DETAIL_GRAPHQL, skip silently
+		return true;
 	}
 
 	// search anilist by title — returns minimal data for the suggestion list
@@ -166,12 +187,25 @@ export class AnilistProvider implements ContentProvider {
 		}));
 	}
 
-	// fetch full detail for a single anime — builds a dynamic graphql query from requested fields
+	// fetch full detail for a single anime — retries up to 3 times, skipping bad fields
 	async fetchDetails(sourceId: string, raw?: unknown): Promise<MediaDetails | null> {
 		const id = raw
-			? (raw as Record<string, unknown>)['id']
+			? (raw as Record<string, unknown>)['id'] as number
 			: parseInt(sourceId, 10);
 
+		for (let attempt = 0; attempt < 3; attempt++) {
+			try {
+				return await this.queryDetails(id);
+			} catch (err) {
+				const added = this.addBadFieldFromError(err);
+				console.warn('Babylon: fetchDetails attempt', attempt, 'failed, added bad field:', added);
+				if (!added) throw err;
+			}
+		}
+		return null;
+	}
+
+	private async queryDetails(id: number): Promise<MediaDetails | null> {
 		const extraFragments = this.getSelectedGraphQLFragments();
 		const mleFragment = this.needsMediaListEntry() ? `\n    ${this.buildMediaListEntryFragment()}` : '';
 		const extra = extraFragments.length > 0 ? `\n    ${extraFragments.join('\n    ')}` : '';
@@ -181,16 +215,21 @@ export class AnilistProvider implements ContentProvider {
   }
 }`;
 
-		console.debug('Babylon: requestedFields', this.requestedFields);
-		console.debug('Babylon: detail query', q);
+		console.debug('Babylon: badFieldKeys', [...this.badFieldKeys]);
 
 		const data = await fetchJson(ANILIST_API, 'POST', JSON.stringify({
 			query: q,
 			variables: { id },
 		}), this.getToken()) as Record<string, unknown>;
 
+		return this.buildDetails(data);
+	}
+
+	private buildDetails(data: Record<string, unknown>): MediaDetails | null {
 		const media = (data['data'] as Record<string, unknown>)?.['Media'] as Record<string, unknown> ?? null;
 		if (!media) return null;
+
+		console.debug('Babylon: media keys', Object.keys(media));
 
 		const title = media['title'] as Record<string, string>;
 		const studios = media['studios'] as Record<string, unknown> ?? {};
@@ -215,10 +254,15 @@ export class AnilistProvider implements ContentProvider {
 
 		// flatten remaining fields into details for template use
 		const extraKeys = [
-			'id', 'status', 'season', 'duration',
+			'id', 'idMal', 'status', 'type', 'season', 'seasonInt', 'duration',
+			'startDate', 'endDate',
 			'bannerImage', 'meanScore', 'popularity', 'favourites',
-			'hashtag', 'countryOfOrigin', 'isAdult', 'source', 'synonyms', 'updatedAt',
+			'hashtag', 'countryOfOrigin', 'isAdult', 'isLicensed', 'source', 'synonyms', 'updatedAt',
+			'chapters', 'volumes',
+			'trending',
+			'nextAiringEpisode', 'airingSchedule', 'trends',
 			'rankings', 'trailer', 'streamingEpisodes', 'externalLinks',
+			'reviews', 'recommendations', 'stats',
 		];
 		for (const key of extraKeys) {
 			if (media[key] !== undefined) {
@@ -258,6 +302,7 @@ export class AnilistProvider implements ContentProvider {
 
 		// extra requested custom fields from media directly
 		for (const key of this.requestedFields) {
+			if (this.badFieldKeys.has(key)) continue;
 			const simpleName = key.replace(/[^a-zA-Z0-9_]/g, '');
 			if (simpleName && details[simpleName] === undefined && media[simpleName] !== undefined) {
 				details[simpleName] = media[simpleName];

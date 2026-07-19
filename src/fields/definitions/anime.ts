@@ -9,11 +9,29 @@ export const animeCategories: FieldCategory[] = [
 	{ id: 'rankings', labelKey: 'field-cat-rankings', icon: 'trophy' },
 ];
 
-const TITLE_GRAPHQL = `title { romaji english native }`;
+const TITLE_GRAPHQL = `title { romaji english native userPreferred }`;
 const COVER_GRAPHQL = `coverImage { extraLarge large medium color }`;
 
 export const animeFields: FieldDefinition[] = [
-	// Core
+	// ── Core ──────────────────────────────────────────────
+	{
+		key: 'id',
+		labelKey: 'field-id',
+		category: 'core',
+		type: 'number',
+		personal: false,
+		graphql: '',
+		always: true,
+	},
+	{
+		key: 'idMal',
+		labelKey: 'field-id-mal',
+		category: 'core',
+		type: 'number',
+		personal: false,
+		graphql: 'idMal',
+		always: false,
+	},
 	{
 		key: 'title',
 		labelKey: 'field-title',
@@ -40,6 +58,42 @@ export const animeFields: FieldDefinition[] = [
 		personal: false,
 		graphql: 'seasonYear',
 		always: true,
+	},
+	{
+		key: 'seasonInt',
+		labelKey: 'field-season-int',
+		category: 'core',
+		type: 'number',
+		personal: false,
+		graphql: 'seasonInt',
+		always: false,
+	},
+	{
+		key: 'startDate',
+		labelKey: 'field-start-date',
+		category: 'core',
+		type: 'date',
+		personal: false,
+		graphql: 'startDate { year month day }',
+		always: false,
+	},
+	{
+		key: 'endDate',
+		labelKey: 'field-end-date',
+		category: 'core',
+		type: 'date',
+		personal: false,
+		graphql: 'endDate { year month day }',
+		always: false,
+	},
+	{
+		key: 'type',
+		labelKey: 'field-type',
+		category: 'core',
+		type: 'string',
+		personal: false,
+		graphql: 'type',
+		always: false,
 	},
 	{
 		key: 'description',
@@ -105,7 +159,7 @@ export const animeFields: FieldDefinition[] = [
 		always: false,
 	},
 
-	// Ratings
+	// ── Ratings ───────────────────────────────────────────
 	{
 		key: 'averageScore',
 		labelKey: 'field-average-score',
@@ -142,8 +196,18 @@ export const animeFields: FieldDefinition[] = [
 		graphql: 'favourites',
 		always: false,
 	},
+	{
+		key: 'trending',
+		labelKey: 'field-trending',
+		category: 'ratings',
+		type: 'number',
+		personal: false,
+		graphql: 'trending',
+		always: false,
+	},
 
-	// Technical
+
+	// ── Technical ─────────────────────────────────────────
 	{
 		key: 'format',
 		labelKey: 'field-format',
@@ -178,6 +242,24 @@ export const animeFields: FieldDefinition[] = [
 		type: 'number',
 		personal: false,
 		graphql: 'duration',
+		always: false,
+	},
+	{
+		key: 'chapters',
+		labelKey: 'field-chapters',
+		category: 'technical',
+		type: 'number',
+		personal: false,
+		graphql: 'chapters',
+		always: false,
+	},
+	{
+		key: 'volumes',
+		labelKey: 'field-volumes',
+		category: 'technical',
+		type: 'number',
+		personal: false,
+		graphql: 'volumes',
 		always: false,
 	},
 	{
@@ -225,8 +307,17 @@ export const animeFields: FieldDefinition[] = [
 		graphql: 'isAdult',
 		always: false,
 	},
+	{
+		key: 'isLicensed',
+		labelKey: 'field-is-licensed',
+		category: 'technical',
+		type: 'boolean',
+		personal: false,
+		graphql: 'isLicensed',
+		always: false,
+	},
 
-	// Personal (requires auth)
+	// ── Personal (requires auth) ──────────────────────────
 	{
 		key: 'progress',
 		labelKey: 'field-progress',
@@ -300,7 +391,7 @@ export const animeFields: FieldDefinition[] = [
 		always: false,
 	},
 
-	// Media (extra content metadata)
+	// ── Media (extra content metadata) ────────────────────
 	{
 		key: 'tags',
 		labelKey: 'field-tags',
@@ -338,16 +429,70 @@ export const animeFields: FieldDefinition[] = [
 		always: false,
 	},
 	{
+		key: 'nextAiringEpisode',
+		labelKey: 'field-next-airing',
+		category: 'media',
+		type: 'object',
+		personal: false,
+		graphql: `nextAiringEpisode { id airingAt timeUntilAiring episode }`,
+		always: false,
+	},
+	{
+		key: 'airingSchedule',
+		labelKey: 'field-airing-schedule',
+		category: 'media',
+		type: 'array',
+		personal: false,
+		graphql: `airingSchedule { edges { node { id episode airingAt } } }`,
+		always: false,
+	},
+	{
+		key: 'trends',
+		labelKey: 'field-trends',
+		category: 'media',
+		type: 'array',
+		personal: false,
+		graphql: `trends { edges { node { date trending popularity episode } } }`,
+		always: false,
+	},
+	{
 		key: 'externalLinks',
 		labelKey: 'field-external-links',
 		category: 'media',
 		type: 'array',
 		personal: false,
-		graphql: `externalLinks { id url site }`,
+		graphql: `externalLinks { id url site siteId type language color icon isDisabled }`,
+		always: false,
+	},
+	{
+		key: 'reviews',
+		labelKey: 'field-reviews',
+		category: 'media',
+		type: 'array',
+		personal: false,
+		graphql: `reviews { edges { node { id score summary body } } }`,
+		always: false,
+	},
+	{
+		key: 'recommendations',
+		labelKey: 'field-recommendations',
+		category: 'media',
+		type: 'array',
+		personal: false,
+		graphql: `recommendations { edges { node { mediaRecommendation { id title { romaji } } } } }`,
+		always: false,
+	},
+	{
+		key: 'stats',
+		labelKey: 'field-stats',
+		category: 'media',
+		type: 'object',
+		personal: false,
+		graphql: `stats { scoreDistribution { score amount } statusDistribution { status amount } }`,
 		always: false,
 	},
 
-	// Rankings
+	// ── Rankings ──────────────────────────────────────────
 	{
 		key: 'rankings',
 		labelKey: 'field-rankings',

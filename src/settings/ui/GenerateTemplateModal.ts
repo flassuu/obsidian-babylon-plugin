@@ -104,13 +104,18 @@ export class GenerateTemplateModal extends Modal {
 			];
 
 		const frontmatterLines = [...header];
+		const added = new Set<string>();
 		for (const key of selectedFieldKeys) {
-			if (knownKeys.has(key)) {
+			if (knownKeys.has(key) && !added.has(key)) {
 				frontmatterLines.push(`${key}: {{${key}}}`);
+				added.add(key);
 			}
 		}
 		for (const key of customFieldKeys) {
-			frontmatterLines.push(`${key}: {{${key}}}`);
+			if (!added.has(key)) {
+				frontmatterLines.push(`${key}: {{${key}}}`);
+				added.add(key);
+			}
 		}
 
 		const bodyLines: string[] = [];

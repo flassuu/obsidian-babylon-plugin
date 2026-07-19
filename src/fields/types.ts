@@ -10,7 +10,7 @@ export interface FieldDefinition {
 	key: string;
 	labelKey: string;
 	category: string;
-	type: 'string' | 'number' | 'array' | 'date' | 'boolean';
+	type: 'string' | 'number' | 'array' | 'date' | 'boolean' | 'object';
 	personal: boolean;
 	provider?: ProviderId;
 	graphql: string;

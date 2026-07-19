@@ -78,7 +78,7 @@ export class TemplateService {
 		const values = buildValueMap(details);
 		return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
 			const val = values[key];
-			return val !== undefined && val !== '' ? val : `{{${key}}}`;
+			return val !== undefined ? val : `{{${key}}}`;
 		});
 	}
 
