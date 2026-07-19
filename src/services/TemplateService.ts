@@ -52,7 +52,7 @@ function buildValueMap(details: MediaDetails): Record<string, string> {
 					.split(/\s+/)
 					.map((w, i) => i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 					.join('');
-				return `${camel}: ${v}`;
+				return `${camel}: ${String(v)}`;
 			});
 			map['advancedScore_List'] = lines.join('\n');
 			continue;
