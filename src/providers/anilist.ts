@@ -33,6 +33,7 @@ const ALWAYS_DETAIL_GRAPHQL = `
   description
   siteUrl
   status
+  synonyms
 `.trim();
 
 const SELF_QUERY = 'query ($id: Int) { Media(id: $id) {';
