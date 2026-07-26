@@ -387,4 +387,114 @@
 	display: none;
 }
 
+/* Sync Review Modal */
+.babylon-sync-summary {
+	margin-bottom: 16px;
+}
+
+.babylon-sync-summary p {
+	margin: 0;
+	font-weight: 600;
+	font-size: 1.1em;
+	color: var(--text-normal);
+}
+
+.babylon-sync-list {
+	max-height: 400px;
+	overflow-y: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	margin-bottom: 16px;
+}
+
+.babylon-sync-note {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.babylon-sync-note:last-child {
+	border-bottom: none;
+}
+
+.babylon-sync-note-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	cursor: pointer;
+	background: var(--background-secondary);
+	user-select: none;
+}
+
+.babylon-sync-note-header:hover {
+	background: var(--background-modifier-hover);
+}
+
+.babylon-sync-note-header input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+}
+
+.babylon-sync-arrow {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.babylon-sync-note-title {
+	flex: 1;
+	font-size: 0.9em;
+	font-weight: 500;
+	color: var(--text-normal);
+}
+
+.babylon-sync-fields {
+	padding: 4px 12px 8px 36px;
+}
+
+.babylon-sync-field-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 0;
+}
+
+.babylon-sync-field-row input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.babylon-sync-field-label {
+	flex: 1;
+	font-size: 0.85em;
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+}
+
+.babylon-sync-ignore-btn {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 6px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 0.8em;
+}
+
+.babylon-sync-ignore-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-accent);
+}
+
+.babylon-sync-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-top: 8px;
+}
+
 

@@ -39,22 +39,44 @@ export function parseFrontmatter(content: string): Record<string, unknown> {
 	return result;
 }
 
-// write updated frontmatter back, preserving the note body
+// merge updates into existing frontmatter, preserving non-sync fields
 export function updateFrontmatter(
 	content: string,
 	updates: Record<string, string | number | boolean | null>,
 ): string {
-	let fm = '---\n';
+	const existing = parseFrontmatter(content);
+
+	// apply updates on top of existing
 	for (const [key, val] of Object.entries(updates)) {
 		if (val === null || val === undefined) {
-			fm += `${key}: \n`;
-		} else if (typeof val === 'string') {
-			fm += `${key}: ${val}\n`;
+			delete existing[key];
 		} else {
-			fm += `${key}: ${val}\n`;
+			existing[key] = val;
 		}
 	}
-	fm += '---\n';
+
+	// serialize all fields back
+	const keys = Object.keys(existing);
+	const fmLines: string[] = [];
+	for (const key of keys) {
+		const val = existing[key];
+		if (val === null || val === undefined) {
+			fmLines.push(`${key}: `);
+		} else if (typeof val === 'string') {
+			fmLines.push(`${key}: ${val}`);
+		} else if (typeof val === 'number' || typeof val === 'boolean') {
+			fmLines.push(`${key}: ${val}`);
+		} else if (Array.isArray(val)) {
+			fmLines.push(`${key}:`);
+			for (const item of val) {
+				fmLines.push(`  - "${String(item)}"`);
+			}
+		} else {
+			fmLines.push(`${key}: ${JSON.stringify(val)}`);
+		}
+	}
+
+	const fm = '---\n' + fmLines.join('\n') + '\n---\n';
 	const match = content.match(/^---\n[\s\S]*?\n---\n/);
 	const body = match ? content.slice(match[0].length) : content;
 	return fm + body.trim();
