@@ -77,6 +77,8 @@ export class SyncEngine {
 			const scalarFields = enabledFields.filter(sf => sf.key !== 'advancedScores');
 			const advField = enabledFields.find(sf => sf.key === 'advancedScores');
 
+			this.debug('cmp', `processing ${scalarFields.length} scalar fields:`, scalarFields.map(sf => sf.key));
+
 			for (const sf of scalarFields) {
 				if (ignoredFields.includes(sf.key)) continue;
 				if (sf.sync === false) continue;
@@ -192,18 +194,13 @@ export class SyncEngine {
 		ignoredFields: string[],
 		property: string,
 	): void {
-		// build lowercase lookup for case-insensitive match (remote has "Story", fm has "story")
-		const fmLower = new Map(Object.entries(fm).map(([k, v]) => [k.toLowerCase(), v]));
-
 		for (const [remoteKey, remoteRaw] of Object.entries(remote)) {
 			if (!remoteKey.startsWith('advancedScores.')) continue;
 			if (ignoredFields.includes(remoteKey)) continue;
 			const subKey = remoteKey.slice('advancedScores.'.length);
-			// try exact match first, then lowercase
-			const localValRaw = fm[subKey] ?? fmLower.get(subKey.toLowerCase());
-			if (localValRaw === undefined) continue;
+			if (fm[subKey] === undefined) continue;
 
-			const localVal = this.coerceValue(localValRaw as string | number | boolean | null | undefined, 'number');
+			const localVal = this.coerceValue(fm[subKey] as string | number | boolean | null | undefined, 'number');
 			const remoteVal = this.coerceValue(remoteRaw, 'number');
 			const eq = this.valuesEqual(localVal, remoteVal, 'number');
 			this.debug('ascore', `${subKey}: L=${localVal} R=${remoteVal} ${eq?'eq':'★'}`);

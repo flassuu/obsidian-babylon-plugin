@@ -18,7 +18,20 @@ const ENTRY_FIELDS = `
   completedAt { year month day }
 `;
 
-// flatten a MediaList entry into a flat key-value map for sync comparison
+// normalize AniList advanced score keys to camelCase, matching what the provider
+// and field definitions produce for the local frontmatter.
+// "Visual Direction" → "visualDirection", "Sound & Music" → "soundAndMusic"
+export function normalizeAdvKey(raw: string): string {
+	return raw
+		.replace(/&/g, ' and ')
+		.replace(/[^a-zA-Z0-9\s]/g, '')
+		.split(/\s+/)
+		.map((w, i) => i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+		.join('');
+}
+
+// flatten a MediaList entry into a flat key-value map for sync comparison.
+// Advanced score keys are normalized to match local frontmatter convention.
 function flattenEntry(entry: Record<string, unknown>): Record<string, string | number | null> {
 	const values: Record<string, string | number | null> = {
 		progress: (entry['progress'] as number) ?? null,
@@ -35,12 +48,13 @@ function flattenEntry(entry: Record<string, unknown>): Record<string, string | n
 	const ca = entry['completedAt'] as Record<string, number> | undefined;
 	if (ca?.year) values['completedAt'] = `${ca.year}-${String(ca.month).padStart(2, '0')}-${String(ca.day).padStart(2, '0')}`;
 
-	// flatten advancedScores — each sub-score as both bare key and namespaced key
+	// flatten advancedScores — each sub-score normalized to camelCase
 	const adv = entry['advancedScores'];
 	if (adv !== null && adv !== undefined && typeof adv === 'object') {
 		for (const [advKey, advVal] of Object.entries(adv as Record<string, number>)) {
-			values[advKey] = advVal ?? null;
-			values[`advancedScores.${advKey}`] = advVal ?? null;
+			const camel = normalizeAdvKey(advKey);
+			values[camel] = advVal ?? null;
+			values[`advancedScores.${camel}`] = advVal ?? null;
 		}
 	}
 
