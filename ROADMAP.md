@@ -59,7 +59,7 @@
 - [x] **Personalization:**
   - [x] Fetch user's anime list (Add from AniList)
   - [x] Private custom fields (progress, score, dates, notes)
-- [x] **Sync:**
+- [x] **Sync (v1, replaced by v2):**
   - [x] Two-way sync: progress, score, status
   - [x] Conflict resolution modal (per-field: keep local / use remote / push to AniList)
   - [x] Sync on startup toggle
@@ -153,6 +153,23 @@ On plugin load, if old `customFieldsPublic` / `customFieldsPrivate` exist in set
 - [x] **TemplateService** — dynamic value map (iterates all MediaDetails keys)
 - [x] **AnilistProvider** — dynamic GraphQL query from selected fields + custom fields
 - [x] **Update SPECIFICATION.md** — reflect new architecture
+
+---
+
+## Stage 3.5: Sync v2 — Field Map + Batch Review
+
+**Goal:** Fully rework sync around a field map JSON sidecar that decouples sync from templates, allows user-renameable frontmatter properties, per-note field ignore, and batch review with per-field control.
+
+### Tasks
+- [ ] **sync/types.ts** — SyncFieldSetting, NoteSyncChange, SyncFieldChange, SyncResult
+- [ ] **SyncFieldMap.ts** — Read/write {mediaType}-fields.json, generate from template/selection
+- [ ] **NoteIgnoreStore.ts** — Per-note ignore list in data.json (sourceId → fieldKeys[])
+- [ ] **SyncEngine.ts** — syncAll() / syncOne(): fetch remote → scan vault → compare per-field → return changes
+- [ ] **SyncReviewModal** — Batch review: collapsible notes, per-field checkboxes, apply/skip/ignore
+- [ ] **Settings integration** — Replace old sync section, add field map status + generate button
+- [ ] **Replace AnilistSyncService** — Remove old two-way sync, wire SyncEngine
+- [ ] **Property name resolution** — Read priority: property → key → case-insensitive; write to property
+- [ ] **One-way only** — AniList → Obsidian (no mutations)
 
 ---
 

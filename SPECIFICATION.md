@@ -1,7 +1,7 @@
 # Babylon Plugin — Technical Specification
 
-> **Version:** 0.3.0 (Templates & Customization)
-> **Last updated:** 2026-07-12
+> **Version:** 0.4.0 (Sync v2 — Field Map, Batch Review)
+> **Last updated:** 2026-07-26
 > **Platform:** Obsidian 1.12+ (cross-platform, desktop-focused)
 > **ID:** `babylon`
 > **Language:** TypeScript (strict), bundled via esbuild → CJS → `main.js`
@@ -34,6 +34,12 @@ interface MediaTypeSettings {
   selectedFields: string[];    // field keys checked in the visual picker
   customFieldNames: string[];  // user-typed custom field names
   templateMode: TemplateMode;  // simple = auto, advanced = custom .md
+  fieldMapPath: string;        // vault-relative path to {mediaType}-fields.json
+}
+
+interface SyncSettings {
+  enabled: boolean;
+  syncOnStartup: boolean;
 }
 
 interface SearchResult {
@@ -64,7 +70,7 @@ interface MediaDetails {
 }
 ```
 
-**Current types in `src/types.ts` match the above.**
+**Current types in `src/types.ts` match the above (with additions for sync).**
 
 ---
 
@@ -89,11 +95,11 @@ interface BabylonSettings {
     customFieldsPublic: string;      // backward compat (migrated)
     customFieldsPrivate: string;     // backward compat (migrated)
   };
-  anilistSync: {
+  sync: {
     enabled: boolean;
     syncOnStartup: boolean;
-    twoWaySync: boolean;
   };
+  noteIgnoreOverrides: Record<string, string[]>;  // sourceId → field keys to ignore
   media: Partial<Record<MediaType, MediaTypeSettings>>;
 }
 ```
@@ -181,17 +187,26 @@ interface FieldDefinition {
 ### Definitions
 
 - `shared.ts` — universal fields (title, year, genres, cover, description, siteUrl — used across all media types)
-- `anime.ts` — AniList-specific fields with GraphQL fragments, 6 categories, ~40 fields
-  - Core (10 fields): title, originalTitle, year, description, cover, bannerImage, genres, synonyms, countryOfOrigin, siteUrl
-  - Ratings (4): averageScore, meanScore, popularity, favourites
-  - Technical (9): format, status, episodes, duration, season, source, hashtag, updatedAt, isAdult
-  - Personal (8, require auth): progress, score, myStatus, startedAt, completedAt, notes, repeat, progressVolumes
-  - Media (5): tags, studios, trailer, streamingEpisodes, externalLinks
-  - Rankings (1): rankings
+- `anime.ts` — AniList-specific fields with GraphQL fragments, 5 categories, ~40 fields
+  - Identity (9 fields): id, idMal, title, originalTitle, title_en, title_jp, title_ro, title_ru, siteUrl
+  - Info (12): year, season, seasonInt, startDate, endDate, type, description, cover, bannerImage, genres, synonyms, countryOfOrigin
+  - Ratings (5): averageScore, meanScore, popularity, favourites, trending
+  - Technical (14): format, status, episodes, duration, chapters, volumes, source, hashtag, updatedAt, isAdult, isLicensed, tags, studios, plus 10 advanced fields (trailer, streamingEpisodes, nextAiringEpisode, airingSchedule, trends, externalLinks, reviews, recommendations, stats, rankings)
+  - Personal (9, require auth): progress, score, myStatus, advancedScores, startedAt, completedAt, notes, repeat, progressVolumes
 
 ### Initialization
 
 `initFields()` in `src/fields/index.ts` registers all default field sets. Called from `main.ts` during `onload()`.
+
+### Advanced fields
+
+Fields with `advanced: true` (trailer, streamingEpisodes, nextAiringEpisode, airingSchedule, trends, externalLinks, reviews, recommendations, stats, rankings) are hidden from the field selector UI checkbox list but remain in the registry. Users enable them by adding the field key to `customFieldNames`. Their GraphQL fragments are still assembled dynamically.
+
+### Field Map (JSON sidecar)
+
+When generating a simple template, the system also creates a `{mediaType}-fields.json` file in the template folder. This JSON stores the mapping between canonical field keys and actual frontmatter property names, plus sync participation flags. The sync system reads this file to determine which fields to sync and where to find them in each note's frontmatter.
+
+See section 7 below for full details.
 
 ### Migration
 
@@ -274,34 +289,214 @@ class TemplateService {
 
 ---
 
-## 7. Sync System
+## 7. Sync System (v2 — Field Map + Batch Review)
 
-### 7.1 AniList Sync (`src/services/AnilistSyncService.ts`)
+### 7.1 Architecture Overview
 
-**Two-way sync:**
+The sync system is redesigned around a **field map** — a JSON sidecar file that decouples sync from templates and allows user-renameable frontmatter properties.
 
 ```
-1. Fetch all user entries from AniList (MediaListCollection)
-   - Requires two-step: Viewer query → userId → MediaListCollection
-2. Scan all .md files in the anime output folder
-3. For each note with source_id matching an AniList entry:
-   a. Compare local fields (status, score, progress, notes) with remote
-   b. If different → show ConflictModal:
-      - "Keep local" — keep local data unchanged
-      - "Use remote" — overwrite local with AniList data
-      - "Push to AniList" — send local data to AniList (mutation)
-      - "Skip" — skip this entry
-   c. Apply chosen action
-4. New AniList entries (no local note) → create notes
-5. Local notes not on AniList → skip (future: archive)
+SyncFlow:
+  Settings (data.json)         Field Map (JSON sidecar)
+      │                              │
+      │  sync.enabled                │  syncFields[].key → FieldDefinition.key
+      │  sync.syncOnStartup          │  syncFields[].property → frontmatter key
+      │  noteIgnoreOverrides         │  syncFields[].sync → boolean
+      │         │                    │
+      └─────────┴────────────────────┘
+                      │
+              SyncEngine.syncAll()
+                      │
+          ┌───────────┼───────────────┐
+          │           │               │
+     Fetch remote  Scan vault    Read field map
+     (AniList)     for notes     + ignore list
+          │           │               │
+          └───────────┼───────────────┘
+                      │
+              Compare per-field
+                      │
+              Changes detected?
+              /              \
+            Yes               No
+             │                 │
+     SyncReviewModal      "Up to date"
+     (batch review)
+             │
+      User applies/cancels
+             │
+      Write frontmatter
 ```
 
-**GraphQL:**
-- `Viewer { id }` — get user ID
-- `MediaListCollection(userId, type: ANIME) { lists { entries { ... } } }` — fetch list
-- `SaveMediaListEntry` mutation — push changes
+### 7.2 Components
 
-### 7.2 Steam Sync (planned)
+All located in `src/sync/`:
+
+| File | Purpose |
+|------|---------|
+| `types.ts` | SyncFieldSetting, NoteSyncChange, SyncFieldChange |
+| `SyncFieldMap.ts` | Read/write JSON sidecar, generate from settings |
+| `NoteIgnoreStore.ts` | Per-note ignore list (data.json) |
+| `SyncEngine.ts` | Core sync pipeline: collect → compare → apply |
+| `ui/SyncReviewModal.ts` | Batch review modal with per-field toggles |
+| `index.ts` | Re-exports |
+
+### 7.3 Field Map (JSON sidecar)
+
+**Location:** `{templateFolder}/{mediaType}-fields.json`
+**Example:** `Templates/anime-fields.json`
+
+```json
+{
+  "version": 1,
+  "mediaType": "anime",
+  "syncFields": [
+    {
+      "key": "progress",
+      "property": "EpisodeWatched",
+      "type": "number",
+      "sync": true
+    },
+    {
+      "key": "score",
+      "property": "rating",
+      "type": "number",
+      "sync": true
+    },
+    {
+      "key": "myStatus",
+      "property": "status",
+      "type": "string",
+      "sync": true
+    },
+    {
+      "key": "startedAt",
+      "property": "startedAt",
+      "type": "date",
+      "sync": false
+    }
+  ]
+}
+```
+
+**Auto-generation:** When user clicks "Generate Simple Template", the generator scans the rendered YAML frontmatter for each `{{placeholder}}`, determines what frontmatter property it landed under, and saves the mapping into `{mediaType}-fields.json`. Only `personal` fields get `sync: true` by default.
+
+**Manual editing:** User can edit the JSON directly in their vault, or via a settings UI (future).
+
+**No field map found:** SyncEngine falls back to defaults: all personal fields from FieldRegistry, property = field key, sync = true.
+
+### 7.4 Property name resolution (the rename problem)
+
+When user renames `progress: {{progress}}` → `EpisodeWatched: {{progress}}` in the template:
+
+1. User updates the field map: edits `"property": "EpisodeWatched"`
+2. SyncEngine reads the map, tries `EpisodeWatched` in frontmatter
+3. If not found → fallback to `key` (`progress`)
+4. If not found → case-insensitive scan of all frontmatter keys
+5. When writing: writes to `property` (`EpisodeWatched`), optionally cleans up old key
+
+**Reading priority:**
+```
+1. property (user-configured, e.g. "EpisodeWatched")
+2. key     (canonical, e.g. "progress")
+3. case-insensitive scan
+```
+
+**Writing:**
+```
+Always write to "property". Delete old "key" if it exists and differs from "property".
+```
+
+### 7.5 SyncEngine (`src/sync/SyncEngine.ts`)
+
+#### `syncAll(mediaType)`
+
+```
+1. Auth check — if no token, abort
+2. Load field map — read {mediaType}-fields.json OR use defaults
+3. Fetch remote — getUserMediaList() from AniList → Map<sourceId, AnilistEntry>
+4. Scan vault — find all * - {sourceId}.md files in mediaType folder
+5. For each matching note:
+   a. Extract sourceId from filename
+   b. Read frontmatter via parseFrontmatter()
+   c. Load per-note ignore list from data.json[noteIgnoreOverrides][sourceId]
+   d. For each syncField where sync = true:
+      - If field key in ignore list → skip
+      - Resolve property name in frontmatter → get local value
+      - Get remote value from AnilistEntry
+      - If values differ → push SyncFieldChange to list
+   e. If any changes → push NoteSyncChange to results
+6. Return SyncResult { changes: NoteSyncChange[] }
+```
+
+#### `syncOne(file)`
+
+Same as syncAll but for a single file. Extracts sourceId from filename, fetches a single AniList entry by sourceId, compares, returns changes.
+
+### 7.6 SyncReviewModal (`src/sync/ui/SyncReviewModal.ts`)
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Sync Review — 3 notes with changes                 │
+│                                                     │
+│  ☐ Frieren - 154587.md                             │
+│  │  ☑ progress: 8 → 12                             │
+│  │  ☑ score: 7 → 8                                 │
+│  │  ☐ status: watching → completed                  │
+│  │  [Ignore field]                                  │
+│  │                                                  │
+│  ☐ Attack on Titan - 12345.md                      │
+│  │  ☑ progress: 45 → 50                            │
+│  │                                                  │
+│  ...                                                │
+│                                                     │
+│  [Apply selected]  [Apply all]  [Skip all]  [Cancel]│
+└─────────────────────────────────────────────────────┘
+```
+
+- Notes listed as collapsible sections (click to expand/collapse)
+- Per-note checkbox selects/deselects all its fields
+- Per-field checkbox toggles individual field sync
+- "Ignore field" button adds field to per-note ignore list → saved to data.json
+- "Apply selected" — write accepted changes to frontmatter
+- "Apply all" — accept everything
+- "Skip all" / "Cancel" — abort
+
+### 7.7 NoteIgnoreStore (`src/sync/NoteIgnoreStore.ts`)
+
+Stored in `BabylonSettings.noteIgnoreOverrides`:
+
+```typescript
+noteIgnoreOverrides: Record<string, string[]>;
+// key: sourceId (from filename)
+// value: field keys to skip during sync
+```
+
+Example in data.json:
+```json
+{
+  "noteIgnoreOverrides": {
+    "154587": ["notes", "score"],
+    "12345": ["score"]
+  }
+}
+```
+
+### 7.8 One-way sync (AniList → Obsidian)
+
+Data only flows from AniList into Obsidian. No mutations sent back to AniList. This simplifies the initial implementation and avoids accidental data loss.
+
+### 7.9 Integration with settings
+
+In `anilist.ts` settings section:
+
+- **Sync enabled** toggle
+- **Sync on startup** toggle
+- **Field map status** — shows if `anime-fields.json` exists, path, field count
+- **"Sync all"** button → triggers SyncEngine.syncAll("anime")
+- **"Generate field map"** button → creates/updates the JSON sidecar from current template
+
+### 7.10 Steam Sync (planned)
 
 Not yet implemented. See ROADMAP Stage 5.
 
@@ -367,30 +562,32 @@ All UI strings stored in translation tables with en ↔ ru.
 
 ---
 
-## 11. Conflict Resolution
+## 11. Sync Review (v2)
 
 ```
-┌──────────────────────────────────────┐
-│  Sync Conflict                        │
-│                                       │
-│  "Attack on Titan"                    │
-│                                       │
-│  ┌──────────────────┬───────────────┐ │
-│  │ Local (Obsidian)  │ Remote (AL)  │ │
-│  ├──────────────────┼───────────────┤ │
-│  │ Status: watching │ Status: paused│ │
-│  │ Rating: 9        │ Rating: 8     │ │
-│  │ Progress: 45/75  │ Progress: 40  │ │
-│  └──────────────────┴───────────────┘ │
-│                                       │
-│  [Keep Local] [Use Remote] [Push] [X]│
-└──────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  Sync Review — 3 notes with changes                 │
+│                                                     │
+│  ☐ Frieren - 154587.md (click to expand)           │
+│  │  ☑ progress: 8 → 12                             │
+│  │  ☑ score: 7 → 8                                 │
+│  │  ☐ status: watching → completed                  │
+│  │  [x] Ignore this field forever                   │
+│  │                                                  │
+│  ☐ Attack on Titan - 12345.md (click to expand)     │
+│  │  ☑ progress: 45 → 50                            │
+│  │                                                  │
+│  ...                                                │
+│                                                     │
+│  [Apply selected] [Apply all] [Skip all] [Cancel]   │
+└─────────────────────────────────────────────────────┘
 ```
 
-- **Keep Local:** Do nothing, keep local data
-- **Use Remote:** Overwrite local with AniList data
-- **Push to AniList:** Send local data → AniList (via `SaveMediaListEntry` mutation)
-- **Skip:** Skip this entry entirely
+- **Apply selected:** Write checked fields to frontmatter
+- **Apply all:** Write all changes without review
+- **Skip all:** Skip all pending changes
+- **Per-field checkbox:** Include/exclude individual field
+- **Ignore field:** Add field to per-note ignore list (saved in data.json)
 
 ---
 
@@ -421,8 +618,11 @@ All UI strings stored in translation tables with en ↔ ru.
 
 ### 12.4 Sync
 - **Manual only** (command, button, startup). No background intervals.
-- Two-way for AniList: modified data can be sent back
-- Conflict resolution is per-field, not per-entry
+- **One-way** (AniList → Obsidian) only. No mutations sent to AniList.
+- **Field map decouples** sync from template — field-to-property mapping stored in external JSON sidecar
+- **Property name resolution** handles user-renamed frontmatter keys (fallback chain: property → key → case-insensitive)
+- **Batch review** with per-file/per-field toggles
+- **Per-note ignore** via data.json (sourceId → field keys)
 - HTTP status + GraphQL errors both checked before resolving
 
 ### 12.5 File naming
@@ -457,10 +657,11 @@ All UI strings stored in translation tables with en ↔ ru.
 - **0.1.0** — MVP: AniList provider, template system, add content, settings, i18n ✅
 - **0.2.0** — AniList sync, personalization, custom fields ✅ (merged into 0.1)
 - **0.3.0** — Field Registry + visual template customization ✅
-- **0.4.0** — Multi-provider: OMDb, RAWG, Steam, books
-- **0.5.0** — Library View (widgets)
-- **0.6.0** — Steam sync
-- **0.7.0** — Polish, tests, documentation
+- **0.4.0** — Sync v2: Field Map, batch review, per-note ignore, property mapping
+- **0.5.0** — Multi-provider: OMDb, RAWG, Steam, books
+- **0.6.0** — Library View (widgets)
+- **0.7.0** — Steam sync
+- **0.8.0** — Polish, tests, documentation
 - **1.0.0** — Stable release
 
 ---
