@@ -13,7 +13,6 @@ export function extractSourceId(filename: string): string | null {
 	return m?.[1] ?? null;
 }
 
-// read frontmatter via Obsidian's metadata cache (handles yaml arrays, objects, etc.)
 export function readFrontmatter(app: App, file: TFile): Record<string, unknown> {
 	const meta = app.metadataCache.getFileCache(file);
 	return meta?.frontmatter ?? {};
@@ -118,7 +117,7 @@ export class SyncEngine {
 
 			updates['lastSyncAt'] = new Date().toISOString();
 
-			await writeFrontmatterUpdates(this.app, file, updates);
+			await applySurgicalFrontmatterUpdates(this.app, file, updates);
 		}
 	}
 
@@ -140,7 +139,7 @@ export class SyncEngine {
 		}
 
 		updates['lastSyncAt'] = new Date().toISOString();
-		await writeFrontmatterUpdates(this.app, file, updates);
+		await applySurgicalFrontmatterUpdates(this.app, file, updates);
 	}
 
 	private async loadEffectiveFieldMap(mediaType: MediaType): Promise<SyncFieldMap | null> {
@@ -199,23 +198,19 @@ export class SyncEngine {
 	}
 }
 
-// try to find a value in frontmatter by trying property names in order
 function resolveFrontmatterValue(
 	fm: Record<string, unknown>,
 	property: string,
 	key: string,
 ): string | number | null {
-	// try exact property match
 	const val = getNestedValue(fm, property);
 	if (val !== undefined) return val as string | number;
 
-	// try exact key match
 	if (key !== property) {
 		const keyVal = getNestedValue(fm, key);
 		if (keyVal !== undefined) return keyVal as string | number;
 	}
 
-	// case-insensitive scan
 	const lowerProperty = property.toLowerCase();
 	const lowerKey = key.toLowerCase();
 	for (const [k, v] of Object.entries(fm)) {
@@ -228,7 +223,6 @@ function resolveFrontmatterValue(
 	return null;
 }
 
-// access nested object values via dot notation (e.g., "advancedScores.story")
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
 	if (!path.includes('.')) return obj[path];
 	const parts = path.split('.');
@@ -240,56 +234,86 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
 	return current;
 }
 
-// write frontmatter updates using Obsidian's processFrontMatter (preserves yaml structure)
-async function writeFrontmatterUpdates(
+// Surgical frontmatter editor: updates only the specific lines that changed,
+// preserving all existing formatting (quotes, comments, array layout, etc.).
+async function applySurgicalFrontmatterUpdates(
 	app: App,
 	file: TFile,
 	updates: Record<string, string | number | boolean | null>,
 ): Promise<void> {
-	await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-		for (const [key, val] of Object.entries(updates)) {
-			if (val === null || val === undefined) {
-				deleteNestedKey(fm, key);
-			} else if (key.includes('.')) {
-				setNestedValue(fm, key, val);
-			} else {
-				fm[key] = val;
-			}
+	const content = await app.vault.read(file);
+
+	const fmMatch = content.match(/^---\n([\s\S]*?)\n---\n/);
+	if (!fmMatch) return;
+
+	const rawFm = fmMatch[1]!;
+	const body = content.slice(fmMatch[0].length);
+
+	const lines = rawFm.split('\n');
+	const seenKeys = new Set<string>();
+
+	for (const [key, val] of Object.entries(updates)) {
+		const lineIdx = findTopLevelKeyLine(lines, key);
+		const serialized = serializeYamlValue(key, val);
+
+		if (lineIdx !== -1) {
+			lines[lineIdx] = serialized;
+		} else {
+			lines.push(serialized);
 		}
-	});
+		seenKeys.add(key);
+	}
+
+	const newFm = lines.join('\n');
+	const newContent = '---\n' + newFm + '\n---\n' + body;
+	await app.vault.modify(file, newContent);
 }
 
-function deleteNestedKey(obj: Record<string, unknown>, path: string): void {
-	if (!path.includes('.')) {
-		delete obj[path];
-		return;
+// Find the line index of a top-level key, skipping indented children.
+function findTopLevelKeyLine(lines: string[], key: string): number {
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i]!;
+		const m = line.match(/^(\w+):/);
+		if (m && m[1] === key) return i;
 	}
-	const parts = path.split('.');
-	const last = parts.pop()!;
-	const parent = getNestedRef(obj, parts);
-	if (parent !== undefined && parent !== null) {
-		delete (parent as Record<string, unknown>)[last];
-	}
+	return -1;
 }
 
-function setNestedValue(obj: Record<string, unknown>, path: string, val: unknown): void {
-	const parts = path.split('.');
-	const last = parts.pop()!;
-	const parent = getNestedRef(obj, parts);
-	if (parent !== undefined && parent !== null) {
-		(parent as Record<string, unknown>)[last] = val;
+// Serialize a single key:value pair for a simple scalar value.
+// Preserves the original quoting from the existing line where possible,
+// otherwise uses best-practice YAML quoting for safety.
+function serializeYamlValue(key: string, val: string | number | boolean | null): string {
+	if (val === null || val === undefined) {
+		return `${key}: `;
 	}
+
+	if (typeof val === 'number') {
+		return `${key}: ${val}`;
+	}
+
+	if (typeof val === 'boolean') {
+		return `${key}: ${val ? 'true' : 'false'}`;
+	}
+
+	// string — quote if it contains yaml-significant characters
+	if (needsYamlQuoting(val)) {
+		return `${key}: "${escapeYamlDoubleQuotes(val)}"`;
+	}
+
+	return `${key}: ${val}`;
 }
 
-function getNestedRef(obj: Record<string, unknown>, parts: string[]): unknown {
-	let current: unknown = obj;
-	for (const part of parts) {
-		if (current === null || current === undefined || typeof current !== 'object') return undefined;
-		const c = current as Record<string, unknown>;
-		if (!(part in c)) {
-			c[part] = {};
-		}
-		current = c[part];
-	}
-	return current;
+function needsYamlQuoting(s: string): boolean {
+	if (s.length === 0) return true;
+	// already quoted
+	if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) return false;
+	// yaml-significant characters
+	if (/[[\]{}:,*&?!|<>'"%@`#]/.test(s)) return true;
+	if (/^[^a-zA-Z0-9]/.test(s)) return true;
+	if (s.includes('  ')) return true;
+	return false;
+}
+
+function escapeYamlDoubleQuotes(s: string): string {
+	return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
