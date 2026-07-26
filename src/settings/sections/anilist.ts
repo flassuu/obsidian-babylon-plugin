@@ -1,11 +1,14 @@
-import { App, FuzzySuggestModal, Modal, Setting } from 'obsidian';
+import { App, FuzzySuggestModal, Modal, Notice, Setting } from 'obsidian';
 import type BabylonPlugin from '../../main';
+import type { MediaTypeSettings } from '../../types';
 import { tr } from '../../i18n';
 import { getAnilistAuthUrl, testAnilistToken } from '../../utils/fetcher';
 import { normalizePath } from './media';
 import { FieldSelector } from '../ui/FieldSelector';
 import { GenerateTemplateModal } from '../ui/GenerateTemplateModal';
 import { addFolderPicker } from '../ui/FolderPicker';
+import { SyncEngine, loadFieldMap, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, getDefaultFieldMap } from '../../sync';
+import { SyncReviewModal } from '../../sync/ui/SyncReviewModal';
 
 const CLIENT_ID = '45744';
 
@@ -78,40 +81,124 @@ function createAuthUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 		});
 }
 
-function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
+function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSettings: MediaTypeSettings | undefined): void {
 	new Setting(containerEl)
 		.setName(tr('settings-sync-enabled'))
 		.setDesc(tr('settings-sync-enabled-desc'))
 		.addToggle((toggle) => {
-			toggle.setValue(plugin.settings.anilistSync.enabled);
+			toggle.setValue(plugin.settings.sync.enabled);
 			toggle.onChange(async (value) => {
-				plugin.settings.anilistSync.enabled = value;
+				plugin.settings.sync.enabled = value;
 				await plugin.saveSettings();
 				plugin.settingsTab.display();
 			});
 		});
 
-	if (!plugin.settings.anilistSync.enabled) return;
+	if (!plugin.settings.sync.enabled) return;
 
 	new Setting(containerEl)
 		.setName(tr('settings-sync-on-startup'))
 		.setDesc(tr('settings-sync-on-startup-desc'))
 		.addToggle((toggle) => {
-			toggle.setValue(plugin.settings.anilistSync.syncOnStartup);
+			toggle.setValue(plugin.settings.sync.syncOnStartup);
 			toggle.onChange(async (value) => {
-				plugin.settings.anilistSync.syncOnStartup = value;
+				plugin.settings.sync.syncOnStartup = value;
 				await plugin.saveSettings();
 			});
 		});
 
+	const mapPath = `${plugin.settings.templateFolder}/${makeFieldMapPath('anime')}`;
+
+	// Load field map status on next tick to avoid blocking render
+	window.setTimeout(() => {
+		loadFieldMap(plugin.app, mapPath).then((existingMap) => {
+			const count = existingMap?.syncFields?.filter((f) => f.sync).length ?? 0;
+			const descEls = containerEl.querySelectorAll('.setting-item-desc');
+			descEls.forEach((el) => {
+				if (el.textContent?.includes('field') || el.textContent?.includes('Field')) {
+					const statusText = count > 0
+						? tr('sync-field-map-exists').replace('{count}', String(count))
+						: tr('sync-field-map-missing');
+					el.textContent = statusText;
+				}
+			});
+		}).catch(() => {});
+	}, 100);
+
+	// Field map generate button
 	new Setting(containerEl)
-		.setName(tr('settings-sync-two-way'))
-		.setDesc(tr('settings-sync-two-way-desc'))
-		.addToggle((toggle) => {
-			toggle.setValue(plugin.settings.anilistSync.twoWaySync);
-			toggle.onChange(async (value) => {
-				plugin.settings.anilistSync.twoWaySync = value;
-				await plugin.saveSettings();
+		.setName(tr('sync-field-map'))
+		.setDesc(tr('sync-field-map-missing'))
+		.addButton((btn) => {
+			btn.setButtonText(tr('sync-generate-map'));
+			btn.onClick(async () => {
+				const animeS = plugin.settings.media.anime;
+				if (!animeS?.templatePath) {
+					new Notice('No template configured. Generate a template first.');
+					return;
+				}
+				const map = await generateFieldMapFromTemplate(plugin.app, 'anime', animeS.templatePath);
+				if (map) {
+					await saveFieldMap(plugin.app, mapPath, map);
+					new Notice(tr('sync-field-map-generated').replace('{path}', mapPath));
+					plugin.settingsTab.display();
+				}
+			});
+		});
+
+	// Sync all button
+	new Setting(containerEl)
+		.setName(tr('sync-all'))
+		.setDesc(tr('sync-all-desc'))
+		.addButton((btn) => {
+			btn.setButtonText(tr('sync-all'));
+			btn.setCta();
+			btn.onClick(async () => {
+				const token = plugin.settings.anilistAuth.accessToken.trim();
+				if (!token) {
+					new Notice('AniList token required for sync');
+					return;
+				}
+				new Notice(tr('sync-in-progress'));
+				try {
+					const engine = new SyncEngine(plugin);
+					const { requestAnilist } = await import('../../utils/fetcher');
+					const gql = `query ($type: MediaType) { MediaListCollection(userName: $userName, type: $type) { lists { entries { id mediaId status score progress progressVolumes repeat notes startedAt { year month day } completedAt { year month day } } } } }`;
+					const data = await requestAnilist(gql, { type: 'ANIME' }, token) as Record<string, unknown>;
+					const collection = data?.['MediaListCollection'] as Record<string, unknown> ?? {};
+					const lists = (collection['lists'] as Array<Record<string, unknown>>) ?? [];
+					const remoteData = new Map<string, Record<string, string | number | null>>();
+					for (const list of lists) {
+						const entries = (list['entries'] as Array<Record<string, unknown>>) ?? [];
+						for (const entry of entries) {
+							const sourceId = String(entry['mediaId']);
+							const values: Record<string, string | number | null> = {
+								progress: (entry['progress'] as number) ?? null,
+								score: (entry['score'] as number) ?? null,
+								myStatus: (entry['status'] as string) ?? null,
+								repeat: (entry['repeat'] as number) ?? null,
+								notes: (entry['notes'] as string) ?? null,
+								progressVolumes: (entry['progressVolumes'] as number) ?? null,
+							};
+							const sa = entry['startedAt'] as Record<string, number> | undefined;
+							if (sa?.year) values['startedAt'] = `${sa.year}-${String(sa.month).padStart(2, '0')}-${String(sa.day).padStart(2, '0')}`;
+							const ca = entry['completedAt'] as Record<string, number> | undefined;
+							if (ca?.year) values['completedAt'] = `${ca.year}-${String(ca.month).padStart(2, '0')}-${String(ca.day).padStart(2, '0')}`;
+							remoteData.set(sourceId, values);
+						}
+					}
+					const result = await engine.syncAll('anime', remoteData);
+					if (result.changes.length === 0) {
+						new Notice(tr('sync-nothing'));
+						return;
+					}
+					const existingMap = await loadFieldMap(plugin.app, mapPath);
+					const fieldMap = existingMap ?? getDefaultFieldMap('anime');
+					new SyncReviewModal(plugin, result.changes, fieldMap).open();
+				} catch (err) {
+					console.error('Babylon: Sync failed', err);
+					new Notice(tr('sync-error'));
+				}
 			});
 		});
 }
@@ -292,7 +379,7 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 
 	if (personalizationOn) {
 		createAuthUI(containerEl, plugin);
-		createSyncUI(containerEl, plugin);
+		createSyncUI(containerEl, plugin, animeSettings);
 	}
 
 	// Template manager

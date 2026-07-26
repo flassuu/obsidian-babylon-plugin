@@ -24,10 +24,9 @@ export interface AnilistAuthSettings {
 	customFieldsPrivate: string;
 }
 
-export interface AnilistSyncSettings {
+export interface SyncSettings {
 	enabled: boolean;
 	syncOnStartup: boolean;
-	twoWaySync: boolean;
 }
 
 export interface BabylonSettings {
@@ -40,7 +39,8 @@ export interface BabylonSettings {
 		steam: string;
 	};
 	anilistAuth: AnilistAuthSettings;
-	anilistSync: AnilistSyncSettings;
+	sync: SyncSettings;
+	noteIgnoreOverrides: Record<string, string[]>;
 	media: Partial<Record<MediaType, MediaTypeSettings>>;
 }
 
@@ -78,17 +78,3 @@ export interface ContentProvider {
 	search(query: string): Promise<SearchResult[]>;
 	fetchDetails(sourceId: string, raw?: unknown): Promise<MediaDetails | null>;
 }
-
-export interface SyncConflict {
-	sourceId: string;
-	title: string;
-	localStatus: string | null;
-	remoteStatus: string | null;
-	localScore: number | null;
-	remoteScore: number | null;
-	localProgress: number | null;
-	remoteProgress: number | null;
-	localNote: string | null;
-	remoteNote: string | null;
-}
-

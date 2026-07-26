@@ -24,11 +24,11 @@ export const DEFAULT_SETTINGS: BabylonSettings = {
 		customFieldsPublic: '',
 		customFieldsPrivate: '',
 	},
-	anilistSync: {
+	sync: {
 		enabled: false,
 		syncOnStartup: false,
-		twoWaySync: true,
 	},
+	noteIgnoreOverrides: {},
 	media: {
 		anime: {
 			enabled: true,
@@ -122,4 +122,11 @@ export function migrateSettings(settings: BabylonSettings, data: Partial<Babylon
 	settings.anilistAuth.customFields = '';
 	settings.anilistAuth.customFieldsPublic = '';
 	settings.anilistAuth.customFieldsPrivate = '';
+
+	// sync migration: transfer old anilistSync to new sync
+	const oldSync = (data as Record<string, unknown>)['anilistSync'] as Record<string, unknown> | undefined;
+	if (oldSync) {
+		settings.sync.enabled = !!oldSync['enabled'];
+		settings.sync.syncOnStartup = !!oldSync['syncOnStartup'];
+	}
 }

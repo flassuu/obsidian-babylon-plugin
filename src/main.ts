@@ -3,13 +3,14 @@ import { BabylonSettingTab } from './settings/SettingsTab';
 import { ProviderRegistry } from './providers/registry';
 import { AnilistProvider } from './providers/anilist';
 import { ContentService } from './services/ContentService';
-import { AnilistSyncService } from './services/AnilistSyncService';
 import { AddContentModal } from './ui/modals/AddContentModal';
 import { AddFromListModal } from './ui/modals/AddFromListModal';
 import { setLocale, tr } from './i18n';
 import { DEFAULT_SETTINGS, migrateSettings } from './settings/defaults';
 import type { BabylonSettings, MediaType } from './types';
 import { initFields } from './fields';
+import { SyncEngine, extractSourceId, loadFieldMap, makeFieldMapPath, getDefaultFieldMap } from './sync';
+import { SyncReviewModal } from './sync/ui/SyncReviewModal';
 
 class TypePickerModal extends Modal {
 	constructor(
@@ -111,7 +112,19 @@ export default class BabylonPlugin extends Plugin {
 		this.addCommand({
 			id: 'sync-anilist',
 			name: tr('sync-anilist'),
-			callback: () => this.runAnilistSync(),
+			callback: () => this.runSync(),
+		});
+
+		this.addCommand({
+			id: 'sync-note',
+			name: tr('sync-note'),
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file) return false;
+				if (checking) return true;
+				void this.runSyncSingle(file);
+				return true;
+			},
 		});
 
 		if (this.settings.anilistAuth.personalizationEnabled) {
@@ -122,8 +135,8 @@ export default class BabylonPlugin extends Plugin {
 			});
 		}
 
-		if (this.settings.anilistSync.enabled && this.settings.anilistSync.syncOnStartup && this.settings.anilistAuth.accessToken) {
-			void this.runAnilistSync();
+		if (this.settings.sync.enabled && this.settings.sync.syncOnStartup && this.settings.anilistAuth.accessToken) {
+			void this.runSync();
 		}
 	}
 
@@ -239,14 +252,105 @@ export default class BabylonPlugin extends Plugin {
 		modal.open();
 	}
 
-	private async runAnilistSync(): Promise<void> {
-		if (!this.settings.anilistSync.enabled) return;
+	private async runSync(): Promise<void> {
+		if (!this.settings.sync.enabled) {
+			new Notice('Sync is disabled. Enable it in settings first.');
+			return;
+		}
 		if (!this.settings.anilistAuth.accessToken) {
-			new Notice('Anilist token not configured in settings.');
+			new Notice('AniList token not configured in settings.');
 			return;
 		}
 
-		const syncService = new AnilistSyncService(this.app, this.settings.anilistAuth.accessToken, this.settings);
-		await syncService.sync();
+		new Notice(tr('sync-in-progress'));
+		try {
+			const engine = new SyncEngine(this);
+			const { requestAnilist } = await import('./utils/fetcher');
+			const gql = `query ($type: MediaType) { MediaListCollection(userName: $userName, type: $type) { lists { entries { id mediaId status score progress progressVolumes repeat notes startedAt { year month day } completedAt { year month day } } } } }`;
+			const data = await requestAnilist(gql, { type: 'ANIME' }, this.settings.anilistAuth.accessToken) as Record<string, unknown>;
+			const collection = data?.['MediaListCollection'] as Record<string, unknown> ?? {};
+			const lists = (collection['lists'] as Array<Record<string, unknown>>) ?? [];
+			const remoteData = new Map<string, Record<string, string | number | null>>();
+			for (const list of lists) {
+				const entries = (list['entries'] as Array<Record<string, unknown>>) ?? [];
+				for (const entry of entries) {
+					const sourceId = String(entry['mediaId']);
+					const values: Record<string, string | number | null> = {
+						progress: (entry['progress'] as number) ?? null,
+						score: (entry['score'] as number) ?? null,
+						myStatus: (entry['status'] as string) ?? null,
+						repeat: (entry['repeat'] as number) ?? null,
+						notes: (entry['notes'] as string) ?? null,
+						progressVolumes: (entry['progressVolumes'] as number) ?? null,
+					};
+					const sa = entry['startedAt'] as Record<string, number> | undefined;
+					if (sa?.year) values['startedAt'] = `${sa.year}-${String(sa.month).padStart(2, '0')}-${String(sa.day).padStart(2, '0')}`;
+					const ca = entry['completedAt'] as Record<string, number> | undefined;
+					if (ca?.year) values['completedAt'] = `${ca.year}-${String(ca.month).padStart(2, '0')}-${String(ca.day).padStart(2, '0')}`;
+					remoteData.set(sourceId, values);
+				}
+			}
+			const result = await engine.syncAll('anime', remoteData);
+			if (result.changes.length === 0) {
+				new Notice(tr('sync-nothing'));
+				return;
+			}
+			const mapPath = `${this.settings.templateFolder}/${makeFieldMapPath('anime')}`;
+			const existingMap = await loadFieldMap(this.app, mapPath);
+			const fieldMap = existingMap ?? getDefaultFieldMap('anime');
+			new SyncReviewModal(this, result.changes, fieldMap).open();
+		} catch (err) {
+			console.error('Babylon: Sync failed', err);
+			new Notice(tr('sync-error'));
+		}
+	}
+
+	private async runSyncSingle(file: import('obsidian').TFile): Promise<void> {
+		if (!this.settings.sync.enabled) {
+			new Notice('Sync is disabled.');
+			return;
+		}
+		const sourceId = extractSourceId(file.name);
+		if (!sourceId) {
+			new Notice('Cannot determine source ID from filename.');
+			return;
+		}
+
+		const engine = new SyncEngine(this);
+		const { requestAnilist } = await import('./utils/fetcher');
+
+		// fetch single entry
+		const gql = `query ($id: Int) { Media(id: $id) { id mediaListEntry { id status score progress progressVolumes repeat notes startedAt { year month day } completedAt { year month day } } } }`;
+		const data = await requestAnilist(gql, { id: Number(sourceId) }, this.settings.anilistAuth.accessToken) as Record<string, unknown>;
+		const media = data?.['Media'] as Record<string, unknown> ?? {};
+		const mle = media['mediaListEntry'] as Record<string, unknown> | undefined;
+		if (!mle) {
+			new Notice('No AniList entry found for this note.');
+			return;
+		}
+
+		const values: Record<string, string | number | null> = {
+			progress: (mle['progress'] as number) ?? null,
+			score: (mle['score'] as number) ?? null,
+			myStatus: (mle['status'] as string) ?? null,
+			repeat: (mle['repeat'] as number) ?? null,
+			notes: (mle['notes'] as string) ?? null,
+			progressVolumes: (mle['progressVolumes'] as number) ?? null,
+		};
+		const sa = mle['startedAt'] as Record<string, number> | undefined;
+		if (sa?.year) values['startedAt'] = `${sa.year}-${String(sa.month).padStart(2, '0')}-${String(sa.day).padStart(2, '0')}`;
+		const ca = mle['completedAt'] as Record<string, number> | undefined;
+		if (ca?.year) values['completedAt'] = `${ca.year}-${String(ca.month).padStart(2, '0')}-${String(ca.day).padStart(2, '0')}`;
+
+		const remoteData = new Map([[sourceId, values]]);
+		const result = await engine.syncAll('anime', remoteData);
+		if (result.changes.length === 0) {
+			new Notice(tr('sync-nothing'));
+			return;
+		}
+		const mapPath = `${this.settings.templateFolder}/${makeFieldMapPath('anime')}`;
+		const existingMap = await loadFieldMap(this.app, mapPath);
+		const fieldMap = existingMap ?? getDefaultFieldMap('anime');
+		new SyncReviewModal(this, result.changes, fieldMap).open();
 	}
 }
