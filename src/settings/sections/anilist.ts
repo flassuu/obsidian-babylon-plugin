@@ -7,7 +7,7 @@ import { normalizePath } from './media';
 import { FieldSelector } from '../ui/FieldSelector';
 import { GenerateTemplateModal } from '../ui/GenerateTemplateModal';
 import { addFolderPicker } from '../ui/FolderPicker';
-import { SyncEngine, loadFieldMap, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, getDefaultFieldMap } from '../../sync';
+import { SyncEngine, loadFieldMap, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, getDefaultFieldMap, fetchAllListData } from '../../sync';
 import { SyncReviewModal } from '../../sync/ui/SyncReviewModal';
 import { FieldMapEditorModal } from '../../sync/ui/FieldMapEditorModal';
 
@@ -169,38 +169,7 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 				new Notice(tr('sync-in-progress'));
 				try {
 					const engine = new SyncEngine(plugin);
-					const { requestAnilist } = await import('../../utils/fetcher');
-					const gql = `query ($type: MediaType) { MediaListCollection(userName: $userName, type: $type) { lists { entries { id mediaId status score advancedScores progress progressVolumes repeat notes startedAt { year month day } completedAt { year month day } } } } }`;
-					const data = await requestAnilist(gql, { type: 'ANIME' }, token) as Record<string, unknown>;
-					const collection = data?.['MediaListCollection'] as Record<string, unknown> ?? {};
-					const lists = (collection['lists'] as Array<Record<string, unknown>>) ?? [];
-					const remoteData = new Map<string, Record<string, string | number | null>>();
-					for (const list of lists) {
-						const entries = (list['entries'] as Array<Record<string, unknown>>) ?? [];
-						for (const entry of entries) {
-							const sourceId = String(entry['mediaId']);
-							const values: Record<string, string | number | null> = {
-								progress: (entry['progress'] as number) ?? null,
-								score: (entry['score'] as number) ?? null,
-								myStatus: (entry['status'] as string) ?? null,
-								repeat: (entry['repeat'] as number) ?? null,
-								notes: (entry['notes'] as string) ?? null,
-								progressVolumes: (entry['progressVolumes'] as number) ?? null,
-							};
-							const sa = entry['startedAt'] as Record<string, number> | undefined;
-							if (sa?.year) values['startedAt'] = `${sa.year}-${String(sa.month).padStart(2, '0')}-${String(sa.day).padStart(2, '0')}`;
-							const ca = entry['completedAt'] as Record<string, number> | undefined;
-							if (ca?.year) values['completedAt'] = `${ca.year}-${String(ca.month).padStart(2, '0')}-${String(ca.day).padStart(2, '0')}`;
-							// flatten advancedScores into individual keys
-							const adv = entry['advancedScores'] as Record<string, number> | undefined;
-							if (adv && typeof adv === 'object') {
-								for (const [advKey, advVal] of Object.entries(adv)) {
-									values[`advancedScores.${advKey}`] = advVal ?? null;
-								}
-							}
-							remoteData.set(sourceId, values);
-						}
-					}
+					const remoteData = await fetchAllListData(plugin.app, token, 'ANIME');
 					const result = await engine.syncAll('anime', remoteData);
 					if (result.changes.length === 0) {
 						new Notice(tr('sync-nothing'));

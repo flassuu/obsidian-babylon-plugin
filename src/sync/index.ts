@@ -1,8 +1,10 @@
 export { SyncEngine, extractSourceId, readFrontmatter } from './SyncEngine';
-export type { RemoteEntryValues, RemoteDataMap } from './SyncEngine';
+export type { RemoteEntryValues } from './SyncEngine';
 export { loadFieldMap, saveFieldMap, getDefaultFieldMap, generateFieldMapFromTemplate, makeFieldMapPath } from './SyncFieldMap';
 export { NoteIgnoreStore } from './NoteIgnoreStore';
 export { SyncReviewModal } from './ui/SyncReviewModal';
 export { FieldMapEditorModal } from './ui/FieldMapEditorModal';
+export { fetchAllListData, fetchSingleListData } from './fetchRemote';
+export type { RemoteDataMap } from './fetchRemote';
 export type { SyncFieldSetting, SyncFieldChange, NoteSyncChange, SyncResult } from './types';
 export type { SyncFieldMap } from './types';
