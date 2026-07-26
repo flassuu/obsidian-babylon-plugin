@@ -71,14 +71,15 @@ export class SyncEngine {
 
 			const changes: SyncFieldChange[] = [];
 
-			for (const sf of enabledFields) {
+			this.debug('cmp', `${file.name} remote keys:`, Object.keys(remote));
+
+			// process scalar fields first, advancedScores last
+			const scalarFields = enabledFields.filter(sf => sf.key !== 'advancedScores');
+			const advField = enabledFields.find(sf => sf.key === 'advancedScores');
+
+			for (const sf of scalarFields) {
 				if (ignoredFields.includes(sf.key)) continue;
 				if (sf.sync === false) continue;
-
-				if (sf.key === 'advancedScores') {
-					this.collectAdvancedScoreChanges(changes, fm, remote, ignoredFields, sf.property);
-					continue;
-				}
 
 				const localRaw = resolveFrontmatterValue(fm, sf.property, sf.key);
 				const remoteRaw = remote[sf.key] ?? null;
@@ -86,8 +87,10 @@ export class SyncEngine {
 				const localVal = this.coerceValue(localRaw, sf.type);
 				const remoteVal = this.coerceValue(remoteRaw, sf.type);
 
-				if (!this.valuesEqual(localVal, remoteVal, sf.type)) {
-					this.debug(`syncAll: change ${sf.key} ${localVal} -> ${remoteVal}`);
+				const eq = this.valuesEqual(localVal, remoteVal, sf.type);
+				this.debug('cmp', `${file.name} ${sf.key}: L=${localVal} R=${remoteVal} ${eq?'eq':'★'}`);
+
+				if (!eq) {
 					changes.push({
 						fieldKey: sf.key,
 						propertyName: sf.property,
@@ -95,6 +98,10 @@ export class SyncEngine {
 						remoteValue: remoteVal,
 					});
 				}
+			}
+
+			if (advField) {
+				this.collectAdvancedScoreChanges(changes, fm, remote, ignoredFields, advField.property);
 			}
 
 			if (changes.length > 0) {
@@ -185,15 +192,22 @@ export class SyncEngine {
 		ignoredFields: string[],
 		property: string,
 	): void {
-		for (const [remoteKey, remoteRaw] of Object.entries(remote)) {
-			// match bare keys (story, characters, etc.) that also exist in local frontmatter
-			if (!remoteKey.startsWith('advancedScores.') || ignoredFields.includes(remoteKey)) continue;
-			const subKey = remoteKey.slice('advancedScores.'.length);
-			if (fm[subKey] === undefined) continue;
+		// build lowercase lookup for case-insensitive match (remote has "Story", fm has "story")
+		const fmLower = new Map(Object.entries(fm).map(([k, v]) => [k.toLowerCase(), v]));
 
-			const localVal = this.coerceValue(fm[subKey] as string | number | boolean | null | undefined, 'number');
+		for (const [remoteKey, remoteRaw] of Object.entries(remote)) {
+			if (!remoteKey.startsWith('advancedScores.')) continue;
+			if (ignoredFields.includes(remoteKey)) continue;
+			const subKey = remoteKey.slice('advancedScores.'.length);
+			// try exact match first, then lowercase
+			const localValRaw = fm[subKey] ?? fmLower.get(subKey.toLowerCase());
+			if (localValRaw === undefined) continue;
+
+			const localVal = this.coerceValue(localValRaw as string | number | boolean | null | undefined, 'number');
 			const remoteVal = this.coerceValue(remoteRaw, 'number');
-			if (!this.valuesEqual(localVal, remoteVal, 'number')) {
+			const eq = this.valuesEqual(localVal, remoteVal, 'number');
+			this.debug('ascore', `${subKey}: L=${localVal} R=${remoteVal} ${eq?'eq':'★'}`);
+			if (!eq) {
 				changes.push({
 					fieldKey: remoteKey,
 					propertyName: subKey,
