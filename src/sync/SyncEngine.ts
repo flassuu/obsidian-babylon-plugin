@@ -49,15 +49,24 @@ export class SyncEngine {
 			return result;
 		}
 
+		this.debug(`syncAll: ${enabledFields.length} enabled`, enabledFields.map(f => f.key));
+
 		const mediaSettings = this.plugin.settings.media[mediaType];
 		const folder = mediaSettings?.folder || `Content/${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)}`;
 		const notes = this.scanFolder(folder);
+		this.debug(`syncAll: ${notes.size} notes, ${remoteData.size} remote`);
 
 		for (const [sourceId, file] of notes) {
 			const remote = remoteData.get(sourceId);
-			if (!remote) continue;
+			if (!remote) {
+				this.debug(`syncAll: no remote for ${sourceId} (${file.path})`);
+				continue;
+			}
 
 			const fm = readFrontmatter(this.app, file);
+			if (Object.keys(fm).length === 0) {
+				this.debug(`syncAll: empty fm for ${file.path}`);
+			}
 			const ignoredFields = this.ignoreStore.getIgnoredFields(sourceId);
 
 			const changes: SyncFieldChange[] = [];
@@ -66,7 +75,6 @@ export class SyncEngine {
 				if (ignoredFields.includes(sf.key)) continue;
 				if (sf.sync === false) continue;
 
-				// special handling for advancedScores: expand into individual sub-fields
 				if (sf.key === 'advancedScores') {
 					this.collectAdvancedScoreChanges(changes, fm, remote, ignoredFields, sf.property);
 					continue;
@@ -79,6 +87,7 @@ export class SyncEngine {
 				const remoteVal = this.coerceValue(remoteRaw, sf.type);
 
 				if (!this.valuesEqual(localVal, remoteVal, sf.type)) {
+					this.debug(`syncAll: change ${sf.key} ${localVal} -> ${remoteVal}`);
 					changes.push({
 						fieldKey: sf.key,
 						propertyName: sf.property,
@@ -96,10 +105,16 @@ export class SyncEngine {
 					filePath: file.path,
 					changes,
 				});
+				this.debug(`syncAll: ${changes.length} changes for ${title}`);
 			}
 		}
 
+		this.debug(`syncAll: ${result.changes.length} notes with changes`);
 		return result;
+	}
+
+	private debug(...args: unknown[]): void {
+		console.warn('[Babylon]', ...args);
 	}
 
 	async applyChanges(changes: NoteSyncChange[], fieldMap: SyncFieldMap): Promise<void> {
@@ -200,12 +215,19 @@ export class SyncEngine {
 		}
 		if (type === 'boolean') return val ? 'true' : 'false';
 		if (type === 'date') {
-			if (typeof val === 'object') {
-				const d = val as { year?: number; month?: number; day?: number };
-				const y = d.year ?? 0;
-				const m = d.month ?? 0;
-				const day = d.day ?? 0;
-				return y > 0 ? `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null;
+			if (typeof val === 'object' && !Array.isArray(val)) {
+				if ('getFullYear' in (val as Record<string, unknown>)) {
+					const dt = val as Date;
+					const y = dt.getFullYear();
+					const mo = dt.getMonth() + 1;
+					const da = dt.getDate();
+					return y > 0 ? `${y}-${String(mo).padStart(2, '0')}-${String(da).padStart(2, '0')}` : null;
+				}
+				const ymd = val as { year?: number; month?: number; day?: number };
+				const y = ymd.year ?? 0;
+				const mo = ymd.month ?? 0;
+				const da = ymd.day ?? 0;
+				return y > 0 ? `${y}-${String(mo).padStart(2, '0')}-${String(da).padStart(2, '0')}` : null;
 			}
 			return String(val);
 		}
@@ -283,16 +305,24 @@ async function applySurgicalFrontmatterUpdates(
 	file: TFile,
 	updates: Record<string, string | number | boolean | null>,
 ): Promise<void> {
-	const content = await app.vault.read(file);
+	let content: string;
+	try {
+		content = await app.vault.read(file);
+	} catch (err) {
+		console.error('[Babylon] applySurgical: failed to read', file.path, err);
+		return;
+	}
 
 	const fmMatch = content.match(/^---\n([\s\S]*?)\n---\n/);
-	if (!fmMatch) return;
+	if (!fmMatch) {
+		console.warn('[Babylon] applySurgical: no frontmatter in', file.path);
+		return;
+	}
 
 	const rawFm = fmMatch[1]!;
 	const body = content.slice(fmMatch[0].length);
 
 	const lines = rawFm.split('\n');
-	const seenKeys = new Set<string>();
 
 	for (const [key, val] of Object.entries(updates)) {
 		const lineIdx = findTopLevelKeyLine(lines, key);
@@ -303,12 +333,17 @@ async function applySurgicalFrontmatterUpdates(
 		} else {
 			lines.push(serialized);
 		}
-		seenKeys.add(key);
 	}
 
 	const newFm = lines.join('\n');
 	const newContent = '---\n' + newFm + '\n---\n' + body;
-	await app.vault.modify(file, newContent);
+
+	try {
+		await app.vault.modify(file, newContent);
+		console.debug('[Babylon] applySurgical: wrote updates to', file.path, Object.keys(updates));
+	} catch (err) {
+		console.error('[Babylon] applySurgical: failed to write', file.path, err);
+	}
 }
 
 // Find the line index of a top-level key, skipping indented children.
