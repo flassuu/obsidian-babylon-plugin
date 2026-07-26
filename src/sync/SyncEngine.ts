@@ -77,14 +77,22 @@ export class SyncEngine {
 			const scalarFields = enabledFields.filter(sf => sf.key !== 'advancedScores');
 			const advField = enabledFields.find(sf => sf.key === 'advancedScores');
 
-			this.debug('cmp', `processing ${scalarFields.length} scalar fields:`, scalarFields.map(sf => sf.key));
+			this.debug('cmp', `processing ${scalarFields.length} scalar fields for ${file.name} ignored=[${ignoredFields.join(',')}]`);
 
 			for (const sf of scalarFields) {
-				if (ignoredFields.includes(sf.key)) continue;
-				if (sf.sync === false) continue;
+				if (ignoredFields.includes(sf.key)) {
+					this.debug('cmp', `SKIP ${sf.key} (ignored)`);
+					continue;
+				}
+				if (sf.sync === false) {
+					this.debug('cmp', `SKIP ${sf.key} (sync=false)`);
+					continue;
+				}
 
 				const localRaw = resolveFrontmatterValue(fm, sf.property, sf.key);
 				const remoteRaw = remote[sf.key] ?? null;
+
+				this.debug('cmp', `RAW ${sf.key}: localRaw=${localRaw} remoteRaw=${remoteRaw} type=${sf.type} prop=${sf.property}`);
 
 				const localVal = this.coerceValue(localRaw, sf.type);
 				const remoteVal = this.coerceValue(remoteRaw, sf.type);
