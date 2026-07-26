@@ -66,6 +66,12 @@ export class SyncEngine {
 				if (ignoredFields.includes(sf.key)) continue;
 				if (sf.sync === false) continue;
 
+				// special handling for advancedScores: expand into individual sub-fields
+				if (sf.key === 'advancedScores') {
+					this.collectAdvancedScoreChanges(changes, fm, remote, ignoredFields, sf.property);
+					continue;
+				}
+
 				const localRaw = resolveFrontmatterValue(fm, sf.property, sf.key);
 				const remoteRaw = remote[sf.key] ?? null;
 
@@ -105,11 +111,8 @@ export class SyncEngine {
 			const updates: Record<string, string | number | boolean | null> = {};
 
 			for (const change of noteChange.changes) {
-				const sf = fieldMap.syncFields.find((f) => f.key === change.fieldKey);
-				const propertyName = sf?.property ?? change.fieldKey;
-
+				const propertyName = resolveUpdateProperty(fieldMap, change);
 				updates[propertyName] = change.remoteValue;
-
 				if (propertyName !== change.fieldKey && fm[change.fieldKey] !== undefined) {
 					updates[change.fieldKey] = null;
 				}
@@ -130,8 +133,7 @@ export class SyncEngine {
 		const updates: Record<string, string | number | boolean | null> = {};
 
 		for (const change of changes) {
-			const sf = fieldMap.syncFields.find((f) => f.key === change.fieldKey);
-			const propertyName = sf?.property ?? change.fieldKey;
+			const propertyName = resolveUpdateProperty(fieldMap, change);
 			updates[propertyName] = change.remoteValue;
 			if (propertyName !== change.fieldKey && fm[change.fieldKey] !== undefined) {
 				updates[change.fieldKey] = null;
@@ -158,6 +160,33 @@ export class SyncEngine {
 			if (sourceId) result.set(sourceId, file);
 		}
 		return result;
+	}
+
+	// expand advancedScores field into individual sub-field changes
+	private collectAdvancedScoreChanges(
+		changes: SyncFieldChange[],
+		fm: Record<string, unknown>,
+		remote: RemoteEntryValues,
+		ignoredFields: string[],
+		property: string,
+	): void {
+		for (const [remoteKey, remoteRaw] of Object.entries(remote)) {
+			// match bare keys (story, characters, etc.) that also exist in local frontmatter
+			if (!remoteKey.startsWith('advancedScores.') || ignoredFields.includes(remoteKey)) continue;
+			const subKey = remoteKey.slice('advancedScores.'.length);
+			if (fm[subKey] === undefined) continue;
+
+			const localVal = this.coerceValue(fm[subKey] as string | number | boolean | null | undefined, 'number');
+			const remoteVal = this.coerceValue(remoteRaw, 'number');
+			if (!this.valuesEqual(localVal, remoteVal, 'number')) {
+				changes.push({
+					fieldKey: remoteKey,
+					propertyName: subKey,
+					localValue: localVal,
+					remoteValue: remoteVal,
+				});
+			}
+		}
 	}
 
 	private coerceValue(
@@ -196,6 +225,19 @@ export class SyncEngine {
 		}
 		return String(a).toLowerCase() === String(b).toLowerCase();
 	}
+}
+
+// resolve the frontmatter property name for a change, handling expanded sub-fields
+function resolveUpdateProperty(fieldMap: SyncFieldMap, change: SyncFieldChange): string {
+	const sf = fieldMap.syncFields.find((f) => f.key === change.fieldKey);
+	if (sf) return sf.property;
+	// expanded sub-key like advancedScores.story → look up parent, then use sub-key
+	if (change.fieldKey.includes('.')) {
+		const parentKey = change.fieldKey.split('.')[0]!;
+		const parentSf = fieldMap.syncFields.find((f) => f.key === parentKey);
+		if (parentSf) return change.fieldKey.slice(parentKey.length + 1);
+	}
+	return change.propertyName;
 }
 
 function resolveFrontmatterValue(
