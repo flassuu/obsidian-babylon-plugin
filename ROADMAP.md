@@ -98,15 +98,16 @@ src/
 - **MediaTypeSettings** — add `selectedFields: string[]`, `customFieldNames: string[]`, `templateMode: 'simple' | 'advanced'`
 - **AnilistAuthSettings** — remove `customFields`, `customFieldsPublic`, `customFieldsPrivate` (migrated to new format)
 
-### Field definitions
+### Field definitions (AniList)
 
-6 categories (extensible):
-- **Core** — title, originalTitle, year, description, cover, bannerImage, genres, synonyms, countryOfOrigin, siteUrl
-- **Ratings** — averageScore, meanScore, popularity, favourites
-- **Technical** — format, status, episodes, duration, season, source, hashtag, updatedAt
-- **Personal** — progress, score, startedAt, completedAt, notes, repeat, progressVolumes (requires auth)
-- **Media** — tags, trailer, streamingEpisodes, externalLinks, studios
-- **Rankings** — rankings
+5 categories:
+- **Identity** — id, idMal, title, originalTitle, title_en, title_jp, title_ro, title_ru, siteUrl
+- **Info** — year, season, seasonInt, startDate, endDate, type, description, cover, bannerImage, genres, synonyms, countryOfOrigin
+- **Ratings** — averageScore, meanScore, popularity, favourites, trending
+- **Technical** — format, status, episodes, duration, chapters, volumes, source, hashtag, updatedAt, isAdult, isLicensed, tags, studios
+- **Personal** — progress, score, myStatus, advancedScores, startedAt, completedAt, notes, repeat, progressVolumes (requires auth)
+
+Complex fields (trailer, streamingEpisodes, nextAiringEpisode, airingSchedule, trends, externalLinks, reviews, recommendations, stats, rankings) are marked `advanced: true` — hidden from the checkbox UI, accessible via custom fields.
 
 Each field definition includes a `graphql` fragment for dynamic query assembly.
 
@@ -226,9 +227,10 @@ On plugin load, if old `customFieldsPublic` / `customFieldsPrivate` exist in set
 - [ ] **Documentation:**
   - [ ] README with screenshots, API key setup guides
 - [ ] **CI/CD:**
-  - [ ] GitHub Actions (lint, test, build)
+  - [x] GitHub Actions (lint, build)
   - [ ] Release action (auto-attach assets)
 - [ ] **Publishing** in Obsidian Community Plugins
+- [x] **Beta release** v0.1.0-beta.1 on GitHub
 
 ---
 
