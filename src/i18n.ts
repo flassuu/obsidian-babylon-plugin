@@ -214,6 +214,12 @@ const en: TranslationTable = {
 	'sync-error': 'Sync failed',
 	'sync-nothing': 'Nothing to sync',
 	'sync-in-progress': 'Syncing...',
+	'field-map-editor-title': 'Field Map Editor',
+	'field-map-editor-filter': 'Filter fields...',
+	'field-map-editor-save': 'Save & Close',
+	'field-map-editor-custom': 'Custom',
+	'field-map-editor-no-results': 'No fields match your filter',
+	'field-map-editor-edit': 'Edit field map',
 };
 
 const ru: TranslationTable = {
@@ -430,6 +436,12 @@ const ru: TranslationTable = {
 	'sync-error': 'Ошибка синхронизации',
 	'sync-nothing': 'Нечего синхронизировать',
 	'sync-in-progress': 'Синхронизация...',
+	'field-map-editor-title': 'Редактор карты полей',
+	'field-map-editor-filter': 'Фильтр полей...',
+	'field-map-editor-save': 'Сохранить и закрыть',
+	'field-map-editor-custom': 'Пользовательские',
+	'field-map-editor-no-results': 'Нет полей по вашему фильтру',
+	'field-map-editor-edit': 'Редактировать карту полей',
 };
 
 const tables: Record<SupportedLocale, TranslationTable> = { en, ru };

@@ -9,6 +9,7 @@ import { GenerateTemplateModal } from '../ui/GenerateTemplateModal';
 import { addFolderPicker } from '../ui/FolderPicker';
 import { SyncEngine, loadFieldMap, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, getDefaultFieldMap } from '../../sync';
 import { SyncReviewModal } from '../../sync/ui/SyncReviewModal';
+import { FieldMapEditorModal } from '../../sync/ui/FieldMapEditorModal';
 
 const CLIENT_ID = '45744';
 
@@ -125,7 +126,7 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 		}).catch(() => {});
 	}, 100);
 
-	// Field map generate button
+	// Field map generate + edit buttons
 	new Setting(containerEl)
 		.setName(tr('sync-field-map'))
 		.setDesc(tr('sync-field-map-missing'))
@@ -143,6 +144,12 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 					new Notice(tr('sync-field-map-generated').replace('{path}', mapPath));
 					plugin.settingsTab.display();
 				}
+			});
+		})
+		.addButton((btn) => {
+			btn.setButtonText(tr('field-map-editor-edit'));
+			btn.onClick(() => {
+				new FieldMapEditorModal(plugin, 'anime').open();
 			});
 		});
 
@@ -163,7 +170,7 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 				try {
 					const engine = new SyncEngine(plugin);
 					const { requestAnilist } = await import('../../utils/fetcher');
-					const gql = `query ($type: MediaType) { MediaListCollection(userName: $userName, type: $type) { lists { entries { id mediaId status score progress progressVolumes repeat notes startedAt { year month day } completedAt { year month day } } } } }`;
+					const gql = `query ($type: MediaType) { MediaListCollection(userName: $userName, type: $type) { lists { entries { id mediaId status score advancedScores progress progressVolumes repeat notes startedAt { year month day } completedAt { year month day } } } } }`;
 					const data = await requestAnilist(gql, { type: 'ANIME' }, token) as Record<string, unknown>;
 					const collection = data?.['MediaListCollection'] as Record<string, unknown> ?? {};
 					const lists = (collection['lists'] as Array<Record<string, unknown>>) ?? [];
@@ -184,6 +191,13 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 							if (sa?.year) values['startedAt'] = `${sa.year}-${String(sa.month).padStart(2, '0')}-${String(sa.day).padStart(2, '0')}`;
 							const ca = entry['completedAt'] as Record<string, number> | undefined;
 							if (ca?.year) values['completedAt'] = `${ca.year}-${String(ca.month).padStart(2, '0')}-${String(ca.day).padStart(2, '0')}`;
+							// flatten advancedScores into individual keys
+							const adv = entry['advancedScores'] as Record<string, number> | undefined;
+							if (adv && typeof adv === 'object') {
+								for (const [advKey, advVal] of Object.entries(adv)) {
+									values[`advancedScores.${advKey}`] = advVal ?? null;
+								}
+							}
 							remoteData.set(sourceId, values);
 						}
 					}
