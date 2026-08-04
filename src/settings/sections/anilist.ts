@@ -184,6 +184,26 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 				}
 			});
 		});
+
+	// Clear per-note ignores
+	new Setting(containerEl)
+		.setName(tr('sync-clear-ignores'))
+		.setDesc(tr('sync-clear-ignores-desc'))
+		.addButton((btn) => {
+			btn.setButtonText(tr('sync-clear-ignores'));
+			btn.onClick(() => {
+				const ignored = plugin.settings.noteIgnoreOverrides;
+				if (!ignored || Object.keys(ignored).length === 0) {
+					new Notice(tr('sync-no-ignores'));
+					return;
+				}
+				plugin.settings.noteIgnoreOverrides = {};
+				void plugin.saveSettings().then(() => {
+					new Notice(tr('sync-ignores-cleared'));
+					plugin.settingsTab.display();
+				});
+			});
+		});
 }
 
 function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin): void {
