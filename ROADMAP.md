@@ -161,15 +161,73 @@ On plugin load, if old `customFieldsPublic` / `customFieldsPrivate` exist in set
 **Goal:** Fully rework sync around a field map JSON sidecar that decouples sync from templates, allows user-renameable frontmatter properties, per-note field ignore, and batch review with per-field control.
 
 ### Tasks
-- [ ] **sync/types.ts** — SyncFieldSetting, NoteSyncChange, SyncFieldChange, SyncResult
-- [ ] **SyncFieldMap.ts** — Read/write {mediaType}-fields.json, generate from template/selection
-- [ ] **NoteIgnoreStore.ts** — Per-note ignore list in data.json (sourceId → fieldKeys[])
-- [ ] **SyncEngine.ts** — syncAll() / syncOne(): fetch remote → scan vault → compare per-field → return changes
-- [ ] **SyncReviewModal** — Batch review: collapsible notes, per-field checkboxes, apply/skip/ignore
-- [ ] **Settings integration** — Replace old sync section, add field map status + generate button
-- [ ] **Replace AnilistSyncService** — Remove old two-way sync, wire SyncEngine
-- [ ] **Property name resolution** — Read priority: property → key → case-insensitive; write to property
-- [ ] **One-way only** — AniList → Obsidian (no mutations)
+- [x] **sync/types.ts** — SyncFieldSetting, NoteSyncChange, SyncFieldChange, SyncResult
+- [x] **SyncFieldMap.ts** — Read/write {mediaType}-fields.json, generate from template/selection
+- [x] **NoteIgnoreStore.ts** — Per-note ignore list in data.json (sourceId → fieldKeys[])
+- [x] **SyncEngine.ts** — syncAll() / syncOne(): fetch remote → scan vault → compare per-field → return changes
+- [x] **SyncReviewModal** — Batch review: collapsible notes, per-field checkboxes, apply/skip/ignore
+- [x] **Settings integration** — Replace old sync section, add field map status + generate button
+- [x] **Replace AnilistSyncService** — Remove old two-way sync, wire SyncEngine
+- [x] **Property name resolution** — Read priority: property → key → case-insensitive; write to property
+- [x] **One-way only** — AniList → Obsidian (no mutations)
+- [x] **Field Map Editor modal** — visual editing of {mediaType}-fields.json
+- [x] **Clear per-note ignores** — settings button to reset noteIgnoreOverrides
+- [x] **Debug logging** — per-field comparison logs for diagnosing sync issues
+
+> **Status:** DONE (verified Aug 2026). Sync v2 detects all enabled fields. Known solved issues: advanced-score key normalization (camelCase), Date object coercion, per-note ignore list silently blocking fields (now clearable from settings).
+
+---
+
+## Stage 3.7: Preset System — Visual Note Builder (NEXT)
+
+**Goal:** Replace manual template + field-map editing with a **preset system** — a single JSON sidecar per media type that is the source of truth for how notes are built and synced. Users configure fields (names, order, formatting) through a visual UI instead of editing templates/JSON by hand.
+
+**Design decisions (confirmed with user, Aug 2026):**
+- **Hybrid:** Preset generates the frontmatter block; the `.md` template still provides the body text. Preset can override any part.
+- **One name everywhere:** Template aliases use the preset's `property` name. Renaming a field in the preset changes the alias used in templates.
+- **Multiple presets per media type**, one marked as `default`. At note creation: use default, or let user pick.
+- **Formatting flags (v1):** value map (PLANNING→Planning), date format, number scaling (100→10), case/capitalization.
+- **Storage:** `{templateFolder}/{mediaType}.preset.json` (JSON files in vault).
+- **UI:** Preset editor as a modal opened from settings.
+- **Migration:** start clean (new system, no auto-import of old template/field-map).
+
+### Architecture
+
+```
+src/presets/
+├── types.ts               # PresetField, FieldFormat, MediaPreset
+├── PresetStore.ts         # CRUD preset JSON files in vault, default resolution
+├── PresetFieldFactory.ts  # Build default preset from FieldRegistry
+├── PresetFormatter.ts     # Apply formatting flags to a raw value
+├── PresetFrontmatter.ts   # Generate frontmatter block from preset + data
+├── PresetTemplate.ts      # Resolve template body via preset aliases
+└── ui/
+    ├── PresetEditorModal.ts  # Visual field editor (order, names, flags)
+    └── PresetPickerModal.ts  # Choose preset at note creation
+```
+
+### Tasks
+
+- [ ] **presets/types.ts** — `PresetField`, `FieldFormat`, `MediaPreset`, versioning
+- [ ] **PresetStore.ts** — load/save/list/delete presets in vault; resolve active default; validation (unique property names, non-empty)
+- [ ] **PresetFieldFactory.ts** — generate default preset from FieldRegistry (personal + core fields, sensible formatting defaults)
+- [ ] **PresetFormatter.ts** — formatting engine: case, valueMap, dateFormat, number scale (pure function)
+- [ ] **PresetFrontmatter.ts** — build ordered frontmatter YAML from preset + MediaDetails (reuse surgical YAML serialization utils)
+- [ ] **PresetTemplate.ts** — render template body: `{{property}}` → formatted value, `{{property_list}}` for arrays; unknown placeholders left as-is
+- [ ] **TemplateService integration** — `render()` accepts preset; frontmatter from preset, body from template
+- [ ] **ContentService integration** — `createNote()` resolves active preset, builds frontmatter + body, combines
+- [ ] **PresetPickerModal** — choose preset at creation when multiple exist and none default
+- [ ] **SyncEngine integration** — replace field map with active preset (`fields` where `sync=true`); keep field-map fallback for legacy
+- [ ] **Sync + formatting** — apply field format to remote value before comparison (local is already formatted)
+- [ ] **PresetEditorModal** — ordered editable field list, property names, apiKey selection, sync toggles, format flags UI, preset meta (name/default/duplicate/delete)
+- [ ] **Settings section** — preset list per media type: create, duplicate, delete, set default, open editor
+- [ ] **i18n** — all new UI strings (en/ru)
+- [ ] **Edge cases** — advancedScores (object/sub-fields), arrays (genres), custom API fields, empty values
+- [ ] **Docs** — update TEMPLATE.md, SPECIFICATION.md, ROADMAP.md
+
+### Full TZ (data model, flows, UI spec)
+
+See `SPECIFICATION.md → Section 15: Preset System`.
 
 ---
 
