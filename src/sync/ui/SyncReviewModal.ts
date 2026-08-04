@@ -1,4 +1,4 @@
-import { Modal, Setting, setIcon } from 'obsidian';
+import { Modal, Notice, Setting, setIcon } from 'obsidian';
 import type { NoteSyncChange, SyncFieldChange, SyncFieldMap } from '../types';
 import { tr } from '../../i18n';
 import { SyncEngine } from '../SyncEngine';
@@ -170,6 +170,7 @@ export class SyncReviewModal extends Modal {
 		ignoreBtn.addEventListener('click', () => {
 			void this.ignoreStore.addIgnoredField(sourceId, change.fieldKey).then(() => {
 				this.selected.delete(key);
+				new Notice(`"${change.fieldKey}" ignored for this note. Manage ignores in settings.`);
 				this.render();
 			});
 		});
