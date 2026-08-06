@@ -7,7 +7,7 @@ import { normalizePath } from './media';
 import { FieldSelector } from '../ui/FieldSelector';
 import { GenerateTemplateModal } from '../ui/GenerateTemplateModal';
 import { addFolderPicker } from '../ui/FolderPicker';
-import { SyncEngine, loadFieldMap, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, getDefaultFieldMap, fetchAllListData } from '../../sync';
+import { SyncEngine, loadFieldMap, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, fetchAllListData } from '../../sync';
 import { SyncReviewModal } from '../../sync/ui/SyncReviewModal';
 import { FieldMapEditorModal } from '../../sync/ui/FieldMapEditorModal';
 
@@ -39,7 +39,7 @@ function createAuthUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 			text.onChange(async (value) => {
 				plugin.settings.anilistAuth.accessToken = value;
 				await plugin.saveSettings();
-				plugin.updateAnilistProvider();
+				await plugin.updateAnilistProvider();
 			});
 		})
 		.addButton((btn) => {
@@ -175,9 +175,7 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 						new Notice(tr('sync-nothing'));
 						return;
 					}
-					const existingMap = await loadFieldMap(plugin.app, mapPath);
-					const fieldMap = existingMap ?? getDefaultFieldMap('anime');
-					new SyncReviewModal(plugin, result.changes, fieldMap).open();
+					new SyncReviewModal(plugin, result.changes).open();
 				} catch (err) {
 					console.error('Babylon: Sync failed', err);
 					new Notice(tr('sync-error'));
@@ -267,7 +265,7 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 					s0.customFieldNames = s0.customFieldNames.filter((f) => f !== name);
 					s0.selectedFields = s0.selectedFields.filter((f) => f !== name);
 					await plugin.saveSettings();
-					plugin.updateAnilistProvider();
+					await plugin.updateAnilistProvider();
 					renderTags();
 				})();
 			});
@@ -302,7 +300,7 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 		if (!val || s.customFieldNames.includes(val)) return;
 		s.customFieldNames.push(val);
 		void plugin.saveSettings();
-		plugin.updateAnilistProvider();
+		void plugin.updateAnilistProvider();
 		renderTags();
 	}
 

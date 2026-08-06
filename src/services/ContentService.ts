@@ -4,6 +4,15 @@ import { TemplateService } from './TemplateService';
 import { sanitizeFilename } from '../utils/sanitize';
 import { tr } from '../i18n';
 import { ConfirmModal } from '../ui/modals/ConfirmModal';
+import type { MediaPreset } from '../presets/types';
+import {
+	makePresetPath,
+	loadPresets,
+	resolveActivePreset,
+	buildFrontmatter,
+	renderPresetBody,
+} from '../presets';
+import { PresetPickerModal } from '../presets/ui/PresetPickerModal';
 
 // creates and manages note files for tracked media
 export class ContentService {
@@ -48,10 +57,26 @@ export class ContentService {
 			if (!confirmed) return null;
 		}
 
-		const rendered = await this.templateService.render(
-			mediaSettings.templatePath,
-			details,
-		);
+		// hybrid render: preset generates the frontmatter, the .md template only
+		// provides the body. fall back to the legacy full-template render when the
+		// media type has no preset.
+		const preset = await this.resolvePreset(type, settings);
+		let rendered: string;
+		if (preset) {
+			const fm = buildFrontmatter(details, preset);
+			const body = await renderPresetBody(
+				this.app,
+				mediaSettings.templatePath,
+				details,
+				preset,
+			);
+			rendered = `---\n${fm}\n---\n${body}`;
+		} else {
+			rendered = await this.templateService.render(
+				mediaSettings.templatePath,
+				details,
+			);
+		}
 
 		try {
 			let file: TFile | null = null;
@@ -79,6 +104,24 @@ export class ContentService {
 			new Notice(tr('create-note-error'));
 			return null;
 		}
+	}
+
+	// resolve which preset to use when creating a note: the marked default,
+	// the only one, or let the user pick when several exist without a default.
+	private async resolvePreset(
+		type: MediaType,
+		settings: BabylonSettings,
+	): Promise<MediaPreset | null> {
+		const path = `${settings.templateFolder}/${makePresetPath(type)}`;
+		const collection = await loadPresets(this.app, path);
+		if (!collection || collection.presets.length === 0) return null;
+
+		const active = resolveActivePreset(collection);
+		if (!active) return null;
+		const hasDefault = collection.presets.some((p) => p.isDefault);
+		if (hasDefault || collection.presets.length === 1) return active;
+
+		return await new PresetPickerModal(this.app, collection.presets).openAndGet();
 	}
 
 	// ensure a nested folder path exists, creating parents as needed

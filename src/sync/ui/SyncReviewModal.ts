@@ -1,5 +1,5 @@
 import { Modal, Notice, Setting, setIcon } from 'obsidian';
-import type { NoteSyncChange, SyncFieldChange, SyncFieldMap } from '../types';
+import type { NoteSyncChange, SyncFieldChange } from '../types';
 import { tr } from '../../i18n';
 import { SyncEngine } from '../SyncEngine';
 import { NoteIgnoreStore } from '../NoteIgnoreStore';
@@ -12,7 +12,6 @@ export interface SyncReviewResult {
 export class SyncReviewModal extends Modal {
 	private plugin: BabylonPlugin;
 	private changes: NoteSyncChange[];
-	private fieldMap: SyncFieldMap;
 	private engine: SyncEngine;
 	private ignoreStore: NoteIgnoreStore;
 
@@ -23,12 +22,10 @@ export class SyncReviewModal extends Modal {
 	constructor(
 		plugin: BabylonPlugin,
 		changes: NoteSyncChange[],
-		fieldMap: SyncFieldMap,
 	) {
 		super(plugin.app);
 		this.plugin = plugin;
 		this.changes = changes;
-		this.fieldMap = fieldMap;
 		this.engine = new SyncEngine(plugin);
 		this.ignoreStore = new NoteIgnoreStore(plugin);
 
@@ -153,8 +150,8 @@ export class SyncReviewModal extends Modal {
 			}
 		});
 
-		// field info
-		const label = change.fieldKey;
+		// field info — show the frontmatter property name as the label
+		const label = change.propertyName;
 		const localStr = change.localValue ?? '—';
 		const remoteStr = change.remoteValue ?? '—';
 		row.createSpan({
@@ -187,12 +184,12 @@ export class SyncReviewModal extends Modal {
 			}
 		}
 		if (filtered.length === 0) return;
-		await this.engine.applyChanges(filtered, this.fieldMap);
+		await this.engine.applyChanges(filtered);
 		this.close();
 	}
 
 	private async applyAll(): Promise<void> {
-		await this.engine.applyChanges(this.changes, this.fieldMap);
+		await this.engine.applyChanges(this.changes);
 		this.close();
 	}
 }

@@ -9,8 +9,9 @@ import { setLocale, tr } from './i18n';
 import { DEFAULT_SETTINGS, migrateSettings } from './settings/defaults';
 import type { BabylonSettings, MediaType } from './types';
 import { initFields } from './fields';
-import { SyncEngine, extractSourceId, loadFieldMap, makeFieldMapPath, getDefaultFieldMap, fetchAllListData, fetchSingleListData } from './sync';
+import { SyncEngine, extractSourceId, fetchAllListData, fetchSingleListData } from './sync';
 import { SyncReviewModal } from './sync/ui/SyncReviewModal';
+import { loadPresets, resolveActivePreset, makePresetPath, isAdvancedScoreKey } from './presets';
 
 class TypePickerModal extends Modal {
 	constructor(
@@ -93,7 +94,7 @@ export default class BabylonPlugin extends Plugin {
 		this.contentService = new ContentService(this.app);
 
 		this.anilistProvider = new AnilistProvider();
-		this.updateAnilistProvider();
+		await this.updateAnilistProvider();
 		this.registry.register(this.anilistProvider);
 
 		this.settingsTab = new BabylonSettingTab(this.app, this);
@@ -154,15 +155,33 @@ export default class BabylonPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	updateAnilistProvider(): void {
+	async updateAnilistProvider(): Promise<void> {
 		this.anilistProvider.setAccessToken(this.settings.anilistAuth.accessToken);
-		const animeSettings = this.settings.media.anime;
-		if (animeSettings) {
-			const selected = animeSettings.selectedFields ?? [];
-			const custom = animeSettings.customFieldNames ?? [];
-			const allKeys = [...new Set([...selected, ...custom])];
-			this.anilistProvider.setRequestedFields(allKeys, this.settings.anilistAuth.accessToken ? true : false);
+		const keys = await this.getRequestedFieldKeys('anime');
+		this.anilistProvider.setRequestedFields(keys, !!this.settings.anilistAuth.accessToken);
+	}
+
+	// the fields requested in GraphQL come from the active preset's apiKeys;
+	// falls back to the legacy selected/custom fields when no preset exists.
+	private async getRequestedFieldKeys(type: MediaType): Promise<string[]> {
+		const path = `${this.settings.templateFolder}/${makePresetPath(type)}`;
+		const collection = await loadPresets(this.app, path);
+		const preset = resolveActivePreset(collection);
+		if (preset) {
+			const keys = new Set<string>();
+			for (const f of preset.fields) {
+				const key = isAdvancedScoreKey(f.apiKey)
+					? 'advancedScores'
+					: f.apiKey.replace(/[^a-zA-Z0-9_]/g, '');
+				if (key) keys.add(key);
+			}
+			return [...keys];
 		}
+		const mediaSettings = this.settings.media[type];
+		return [...new Set([
+			...(mediaSettings?.selectedFields ?? []),
+			...(mediaSettings?.customFieldNames ?? []),
+		])];
 	}
 
 	private pickTypeAndAdd(): void {
@@ -271,10 +290,7 @@ export default class BabylonPlugin extends Plugin {
 				new Notice(tr('sync-nothing'));
 				return;
 			}
-			const mapPath = `${this.settings.templateFolder}/${makeFieldMapPath('anime')}`;
-			const existingMap = await loadFieldMap(this.app, mapPath);
-			const fieldMap = existingMap ?? getDefaultFieldMap('anime');
-			new SyncReviewModal(this, result.changes, fieldMap).open();
+			new SyncReviewModal(this, result.changes).open();
 		} catch (err) {
 			console.error('Babylon: Sync failed', err);
 			new Notice(tr('sync-error'));
@@ -303,9 +319,6 @@ export default class BabylonPlugin extends Plugin {
 			new Notice(tr('sync-nothing'));
 			return;
 		}
-		const mapPath = `${this.settings.templateFolder}/${makeFieldMapPath('anime')}`;
-		const existingMap = await loadFieldMap(this.app, mapPath);
-		const fieldMap = existingMap ?? getDefaultFieldMap('anime');
-		new SyncReviewModal(this, result.changes, fieldMap).open();
+		new SyncReviewModal(this, result.changes).open();
 	}
 }

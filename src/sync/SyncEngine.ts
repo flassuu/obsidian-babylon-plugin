@@ -4,6 +4,15 @@ import { tr } from '../i18n';
 import type { SyncFieldMap, SyncFieldChange, NoteSyncChange, SyncResult } from './types';
 import { loadFieldMap, getDefaultFieldMap, makeFieldMapPath } from './SyncFieldMap';
 import { NoteIgnoreStore } from './NoteIgnoreStore';
+import {
+	loadPresets,
+	resolveActivePreset,
+	makePresetPath,
+	PresetFormatter,
+	remoteKeyFor,
+	type FieldFormat,
+} from '../presets';
+import { serializeYamlValue } from '../utils/yaml';
 import type BabylonPlugin from '../main';
 
 const SOURCE_ID_RE = / - (\d+)\.md$/;
@@ -21,10 +30,20 @@ export function readFrontmatter(app: App, file: TFile): Record<string, unknown> 
 export type RemoteEntryValues = Record<string, string | number | null>;
 export type RemoteDataMap = Map<string, RemoteEntryValues>;
 
+// a field compared during sync: where the value lives remotely, where it is
+// stored in frontmatter, and how to format it before comparison.
+interface SyncTarget {
+	apiKey: string;
+	property: string;
+	type: string;
+	format?: FieldFormat;
+}
+
 export class SyncEngine {
 	private app: App;
 	private plugin: BabylonPlugin;
 	private ignoreStore: NoteIgnoreStore;
+	private formatter = new PresetFormatter();
 
 	constructor(plugin: BabylonPlugin) {
 		this.app = plugin.app;
@@ -38,23 +57,22 @@ export class SyncEngine {
 	): Promise<SyncResult> {
 		const result: SyncResult = { mediaType, changes: [] };
 
-		const fieldMap = await this.loadEffectiveFieldMap(mediaType);
-		if (!fieldMap || fieldMap.syncFields.length === 0) {
-			new Notice(tr('sync-nothing'));
-			return result;
-		}
-		const enabledFields = fieldMap.syncFields.filter((f) => f.sync);
-		if (enabledFields.length === 0) {
+		const targets = await this.loadEffectiveTargets(mediaType);
+		if (!targets || targets.length === 0) {
 			new Notice(tr('sync-nothing'));
 			return result;
 		}
 
-		this.debug(`syncAll: ${enabledFields.length} enabled`, enabledFields.map(f => f.key));
+		this.debug(`syncAll: ${targets.length} enabled`, targets.map(t => t.apiKey));
 
 		const mediaSettings = this.plugin.settings.media[mediaType];
 		const folder = mediaSettings?.folder || `Content/${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)}`;
 		const notes = this.scanFolder(folder);
 		this.debug(`syncAll: ${notes.size} notes, ${remoteData.size} remote`);
+
+		// process scalar fields first, the whole advancedScores object last
+		const scalarTargets = targets.filter((t) => t.apiKey !== 'advancedScores');
+		const advTarget = targets.find((t) => t.apiKey === 'advancedScores');
 
 		for (const [sourceId, file] of notes) {
 			const remote = remoteData.get(sourceId);
@@ -73,45 +91,38 @@ export class SyncEngine {
 
 			this.debug('cmp', `${file.name} remote keys:`, Object.keys(remote));
 
-			// process scalar fields first, advancedScores last
-			const scalarFields = enabledFields.filter(sf => sf.key !== 'advancedScores');
-			const advField = enabledFields.find(sf => sf.key === 'advancedScores');
-
-			this.debug('cmp', `processing ${scalarFields.length} scalar fields for ${file.name} ignored=[${ignoredFields.join(',')}]`);
-
-			for (const sf of scalarFields) {
-				if (ignoredFields.includes(sf.key)) {
-					this.debug('cmp', `SKIP ${sf.key} (ignored)`);
-					continue;
-				}
-				if (sf.sync === false) {
-					this.debug('cmp', `SKIP ${sf.key} (sync=false)`);
+			for (const target of scalarTargets) {
+				if (ignoredFields.includes(target.apiKey)) {
+					this.debug('cmp', `SKIP ${target.apiKey} (ignored)`);
 					continue;
 				}
 
-				const localRaw = resolveFrontmatterValue(fm, sf.property, sf.key);
-				const remoteRaw = remote[sf.key] ?? null;
+				const localRaw = resolveFrontmatterValue(fm, target.property, target.apiKey);
+				const remoteRaw = remote[target.apiKey] ?? null;
 
-				this.debug('cmp', `RAW ${sf.key}: localRaw=${localRaw} remoteRaw=${remoteRaw} type=${sf.type} prop=${sf.property}`);
+				this.debug('cmp', `RAW ${target.apiKey}: localRaw=${localRaw} remoteRaw=${remoteRaw} type=${target.type} prop=${target.property}`);
 
-				const localVal = this.coerceValue(localRaw, sf.type);
-				const remoteVal = this.coerceValue(remoteRaw, sf.type);
+				// local files already hold formatted values, so format the remote
+				// side the same way before comparing
+				const formatted = this.formatter.apply(remoteRaw, target.format);
+				const localVal = this.coerceValue(localRaw, target.type);
+				const remoteVal = this.coerceValue(formatted, target.type);
 
-				const eq = this.valuesEqual(localVal, remoteVal, sf.type);
-				this.debug('cmp', `${file.name} ${sf.key}: L=${localVal} R=${remoteVal} ${eq?'eq':'★'}`);
+				const eq = this.valuesEqual(localVal, remoteVal, target.type);
+				this.debug('cmp', `${file.name} ${target.apiKey}: L=${localVal} R=${remoteVal} ${eq?'eq':'★'}`);
 
 				if (!eq) {
 					changes.push({
-						fieldKey: sf.key,
-						propertyName: sf.property,
+						fieldKey: target.apiKey,
+						propertyName: target.property,
 						localValue: localVal,
 						remoteValue: remoteVal,
 					});
 				}
 			}
 
-			if (advField) {
-				this.collectAdvancedScoreChanges(changes, fm, remote, ignoredFields, advField.property);
+			if (advTarget) {
+				this.collectAdvancedScoreChanges(changes, fm, remote, ignoredFields, advTarget.property);
 			}
 
 			if (changes.length > 0) {
@@ -134,7 +145,7 @@ export class SyncEngine {
 		console.warn('[Babylon]', ...args);
 	}
 
-	async applyChanges(changes: NoteSyncChange[], fieldMap: SyncFieldMap): Promise<void> {
+	async applyChanges(changes: NoteSyncChange[]): Promise<void> {
 		for (const noteChange of changes) {
 			const file = this.app.vault.getAbstractFileByPath(noteChange.filePath);
 			if (!file || !(file instanceof TFile)) continue;
@@ -143,9 +154,10 @@ export class SyncEngine {
 			const updates: Record<string, string | number | boolean | null> = {};
 
 			for (const change of noteChange.changes) {
-				const propertyName = resolveUpdateProperty(fieldMap, change);
-				updates[propertyName] = change.remoteValue;
-				if (propertyName !== change.fieldKey && fm[change.fieldKey] !== undefined) {
+				// propertyName already carries the target frontmatter key; clean up
+				// the old key when a field was renamed
+				updates[change.propertyName] = change.remoteValue;
+				if (change.propertyName !== change.fieldKey && fm[change.fieldKey] !== undefined) {
 					updates[change.fieldKey] = null;
 				}
 			}
@@ -159,15 +171,13 @@ export class SyncEngine {
 	async applyNoteChanges(
 		file: TFile,
 		changes: SyncFieldChange[],
-		fieldMap: SyncFieldMap,
 	): Promise<void> {
 		const fm = readFrontmatter(this.app, file);
 		const updates: Record<string, string | number | boolean | null> = {};
 
 		for (const change of changes) {
-			const propertyName = resolveUpdateProperty(fieldMap, change);
-			updates[propertyName] = change.remoteValue;
-			if (propertyName !== change.fieldKey && fm[change.fieldKey] !== undefined) {
+			updates[change.propertyName] = change.remoteValue;
+			if (change.propertyName !== change.fieldKey && fm[change.fieldKey] !== undefined) {
 				updates[change.fieldKey] = null;
 			}
 		}
@@ -176,11 +186,36 @@ export class SyncEngine {
 		await applySurgicalFrontmatterUpdates(this.app, file, updates);
 	}
 
-	private async loadEffectiveFieldMap(mediaType: MediaType): Promise<SyncFieldMap | null> {
+	// resolve the sync field list: active preset first, legacy field map as fallback
+	private async loadEffectiveTargets(mediaType: MediaType): Promise<SyncTarget[] | null> {
+		const presetPath = `${this.plugin.settings.templateFolder}/${makePresetPath(mediaType)}`;
+		const collection = await loadPresets(this.app, presetPath);
+		const preset = resolveActivePreset(collection);
+		if (preset) {
+			return preset.fields
+				.filter((f) => f.sync)
+				.map((f) => ({
+					apiKey: remoteKeyFor(f.apiKey),
+					property: f.property,
+					type: f.type,
+					format: f.format,
+				}));
+		}
+
 		const mapPath = `${this.plugin.settings.templateFolder}/${makeFieldMapPath(mediaType)}`;
+		const map = await this.loadLegacyFieldMap(mediaType, mapPath);
+		if (!map || map.syncFields.length === 0) return null;
+		const enabled = map.syncFields.filter((sf) => sf.sync);
+		return enabled.map((sf) => ({
+			apiKey: sf.key,
+			property: sf.property,
+			type: sf.type,
+		}));
+	}
+
+	private async loadLegacyFieldMap(mediaType: MediaType, mapPath: string): Promise<SyncFieldMap | null> {
 		const map = await loadFieldMap(this.app, mapPath);
-		if (map) return map;
-		return getDefaultFieldMap(mediaType);
+		return map ?? getDefaultFieldMap(mediaType);
 	}
 
 	private scanFolder(folder: string): Map<string, TFile> {
@@ -194,7 +229,8 @@ export class SyncEngine {
 		return result;
 	}
 
-	// expand advancedScores field into individual sub-field changes
+	// expand the whole advancedScores object into individual sub-field changes
+	// (legacy field-map mode — presets model sub-fields as individual entries)
 	private collectAdvancedScoreChanges(
 		changes: SyncFieldChange[],
 		fm: Record<string, unknown>,
@@ -266,19 +302,6 @@ export class SyncEngine {
 		}
 		return String(a).toLowerCase() === String(b).toLowerCase();
 	}
-}
-
-// resolve the frontmatter property name for a change, handling expanded sub-fields
-function resolveUpdateProperty(fieldMap: SyncFieldMap, change: SyncFieldChange): string {
-	const sf = fieldMap.syncFields.find((f) => f.key === change.fieldKey);
-	if (sf) return sf.property;
-	// expanded sub-key like advancedScores.story → look up parent, then use sub-key
-	if (change.fieldKey.includes('.')) {
-		const parentKey = change.fieldKey.split('.')[0]!;
-		const parentSf = fieldMap.syncFields.find((f) => f.key === parentKey);
-		if (parentSf) return change.fieldKey.slice(parentKey.length + 1);
-	}
-	return change.propertyName;
 }
 
 function resolveFrontmatterValue(
@@ -373,43 +396,4 @@ function findTopLevelKeyLine(lines: string[], key: string): number {
 		if (m && m[1] === key) return i;
 	}
 	return -1;
-}
-
-// Serialize a single key:value pair for a simple scalar value.
-// Preserves the original quoting from the existing line where possible,
-// otherwise uses best-practice YAML quoting for safety.
-function serializeYamlValue(key: string, val: string | number | boolean | null): string {
-	if (val === null || val === undefined) {
-		return `${key}: `;
-	}
-
-	if (typeof val === 'number') {
-		return `${key}: ${val}`;
-	}
-
-	if (typeof val === 'boolean') {
-		return `${key}: ${val ? 'true' : 'false'}`;
-	}
-
-	// string — quote if it contains yaml-significant characters
-	if (needsYamlQuoting(val)) {
-		return `${key}: "${escapeYamlDoubleQuotes(val)}"`;
-	}
-
-	return `${key}: ${val}`;
-}
-
-function needsYamlQuoting(s: string): boolean {
-	if (s.length === 0) return true;
-	// already quoted
-	if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) return false;
-	// yaml-significant characters
-	if (/[[\]{}:,*&?!|<>'"%@`#]/.test(s)) return true;
-	if (/^[^a-zA-Z0-9]/.test(s)) return true;
-	if (s.includes('  ')) return true;
-	return false;
-}
-
-function escapeYamlDoubleQuotes(s: string): string {
-	return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }

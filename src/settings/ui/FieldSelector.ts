@@ -98,7 +98,7 @@ export class FieldSelector {
 		if (settings) {
 			settings.selectedFields = [...this.selected];
 			await this.plugin.saveSettings();
-			this.plugin.updateAnilistProvider();
+			await this.plugin.updateAnilistProvider();
 		}
 		this.onChanged();
 	}
