@@ -843,42 +843,33 @@
 }
 
 /* ── Settings collapsible sections ───────────────────────────
-   Each group renders as a rounded card (the "General" reference):
-   header row on top, then the settings below separated by dividers. */
+   Native Obsidian structure (.setting-group / .setting-item-heading /
+   .setting-items) — core and community-theme CSS style these classes,
+   so groups render exactly like Obsidian's own settings. We only fill
+   small gaps (spacing, open-state hiding, level-1 heading size). */
 
-.babylon-collapsible {
-	margin: 10px 8px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background: var(--background-secondary);
-	overflow: hidden;
+.babylon-collapsible + .babylon-collapsible {
+	margin-top: 1.2em;
 }
 
-.babylon-collapsible .babylon-collapsible-header {
+.babylon-collapsible-header {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	margin: 0;
-	padding: 10px 14px;
 	cursor: pointer;
 	user-select: none;
 	list-style: none;
-	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .babylon-collapsible-header.mod-static {
 	cursor: default;
 }
 
-.babylon-collapsible:not(.is-open) > .babylon-collapsible-header {
-	border-bottom: none;
-}
-
 .babylon-collapsible:not(.is-open) > .babylon-collapsible-body {
 	display: none;
 }
 
-.babylon-collapsible .babylon-collapsible-header .setting-item-name {
+.babylon-collapsible-header .setting-item-name {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
@@ -895,7 +886,7 @@
 	font-size: 1.1em;
 }
 
-.babylon-collapsible .babylon-collapsible-controls {
+.babylon-collapsible-controls {
 	margin-left: auto;
 	display: inline-flex;
 	align-items: center;
@@ -904,21 +895,7 @@
 }
 
 .babylon-collapsible-body {
-	padding: 4px 0 6px;
-}
-
-/* divider between settings inside a card */
-.babylon-collapsible-body .setting-item + .setting-item {
-	border-top: 1px solid var(--background-modifier-border);
-}
-
-.babylon-collapsible-body > .setting-item:last-child {
-	border-bottom: none;
-}
-
-/* nested cards span the full width of their parent — no level indentation */
-.babylon-collapsible-body .babylon-collapsible {
-	margin: 8px 0;
+	padding: 4px 0 8px;
 }
 
 /* folder picker embedded in a group header */

@@ -54,6 +54,9 @@ export function createCollapsible(
 		controls.addEventListener('click', (e) => e.stopPropagation());
 	}
 
+	// empty search slot — present in native Obsidian groups too
+	group.createEl('div', { cls: 'setting-group-search', attr: { tabindex: '-1' } });
+
 	const body = group.createDiv({ cls: 'setting-items babylon-collapsible-body' });
 
 	const applyState = (open: boolean): void => {
