@@ -842,55 +842,43 @@
 	font-size: 0.85em;
 }
 
-/* ── Settings collapsible sections ─────────────────────────── */
+/* ── Settings collapsible sections ───────────────────────────
+   Built on Obsidian's native .setting-group / .setting-item-heading
+   structure, so core styles and community themes apply directly.
+   These rules only fill the small gaps core CSS does not cover. */
 
 .babylon-collapsible {
 	margin: 2px 0;
 }
 
 .babylon-collapsible + .babylon-collapsible {
-	margin-top: 10px;
+	margin-top: 14px;
 }
 
 .babylon-collapsible-header {
 	display: flex;
-	align-items: flex-start;
-	gap: 12px;
+	align-items: center;
 	cursor: pointer;
 	user-select: none;
-	padding: 6px 0;
-	border-radius: 6px;
 	list-style: none;
+}
+
+.babylon-collapsible-header.mod-static {
+	cursor: default;
+}
+
+.babylon-collapsible:not(.is-open) > .babylon-collapsible-body {
+	display: none;
 }
 
 .babylon-collapsible-header::-webkit-details-marker {
 	display: none;
 }
 
-.babylon-collapsible-header:hover {
-	background: var(--background-modifier-hover);
-}
-
-.babylon-collapsible-header:focus-visible {
-	outline: 2px solid var(--interactive-accent);
-	outline-offset: -1px;
-}
-
-.babylon-collapsible-title {
+.babylon-collapsible-header .setting-item-name {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
-	min-width: 0;
-}
-
-.babylon-collapsible-title-text {
-	font-weight: 600;
-	line-height: 1.4;
-	color: var(--text-normal);
-}
-
-.babylon-collapsible-level-1 > .babylon-collapsible-header .babylon-collapsible-title-text {
-	font-size: 1.15em;
 }
 
 .babylon-collapsible-desc {
@@ -898,6 +886,10 @@
 	font-size: 0.85em;
 	line-height: 1.4;
 	color: var(--text-muted);
+}
+
+.babylon-collapsible-level-1 > .babylon-collapsible-header .setting-item-name {
+	font-size: 1.1em;
 }
 
 .babylon-collapsible-controls {
@@ -909,9 +901,5 @@
 }
 
 .babylon-collapsible-body {
-	padding: 4px 0 6px;
-}
-
-.babylon-collapsible-body .babylon-collapsible-body {
-	padding-top: 2px;
+	padding: 4px 0;
 }

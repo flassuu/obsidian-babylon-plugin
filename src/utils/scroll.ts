@@ -19,6 +19,13 @@ export function preserveReRenderState(
 		: null;
 	const innerTop = innerScroller ? innerScroller.scrollTop : 0;
 
+	const groupStates = new Map<string, boolean>();
+	container.querySelectorAll('.babylon-collapsible').forEach((el) => {
+		const group = el as HTMLElement;
+		const key = group.dataset.collapseKey ?? (group.textContent?.trim() ?? '');
+		groupStates.set(key, group.classList.contains('is-open'));
+	});
+
 	const detailsStates = new Map<string, boolean>();
 	container.querySelectorAll('details').forEach((el) => {
 		const key = el.dataset.collapseKey ?? (el.textContent?.trim() ?? '');
@@ -34,6 +41,13 @@ export function preserveReRenderState(
 		const newInner = container.querySelector(scrollerSelector);
 		if (newInner) newInner.scrollTop = innerTop;
 	}
+
+	container.querySelectorAll('.babylon-collapsible').forEach((el) => {
+		const group = el as HTMLElement;
+		const key = group.dataset.collapseKey ?? (group.textContent?.trim() ?? '');
+		const wasOpen = groupStates.get(key);
+		if (wasOpen !== undefined) group.classList.toggle('is-open', wasOpen);
+	});
 
 	container.querySelectorAll('details').forEach((el) => {
 		const key = el.dataset.collapseKey ?? (el.textContent?.trim() ?? '');

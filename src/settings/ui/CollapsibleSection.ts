@@ -1,7 +1,7 @@
-// Obsidian-native collapsible group built on <details>/<summary>.
-// Styled with standard Obsidian CSS variables so community themes keep working.
-// The header can carry an optional control (e.g. an enable toggle) that does
-// not trigger the collapse when clicked.
+// Obsidian-native settings group built on plain divs — the same structure
+// Obsidian's own settings use (.setting-group / .setting-item-heading /
+// .setting-items). No <details>/<summary>: open state is driven only by a
+// CSS class, so header clicks never fold unless we wire them explicitly.
 
 export interface CollapsibleConfig {
 	title: string;
@@ -29,41 +29,48 @@ export function createCollapsible(
 	container: HTMLElement,
 	config: CollapsibleConfig,
 ): CollapsibleSection {
-	const details = container.createEl('details', {
-		cls: `babylon-collapsible babylon-collapsible-level-${config.level ?? 1}`,
+	const group = container.createEl('div', {
+		cls: `setting-group babylon-collapsible babylon-collapsible-level-${config.level ?? 1}`,
 	});
-	if (config.defaultOpen) details.open = true;
-	if (config.key) details.dataset.collapseKey = config.key;
+	if (config.key) group.dataset.collapseKey = config.key;
 
-	const summary = details.createEl('summary', { cls: 'babylon-collapsible-header' });
+	const header = group.createEl('div', {
+		cls: 'setting-item setting-item-heading babylon-collapsible-header'
+			+ (config.toggleable === false ? ' mod-static' : ''),
+	});
 
-	// non-toggleable groups act as plain headings — clicking must not fold
-	if (config.toggleable === false) {
-		summary.addEventListener('click', (e) => e.preventDefault());
-	}
-
-	const title = summary.createDiv({ cls: 'babylon-collapsible-title' });
-	title.createSpan({ text: config.title, cls: 'babylon-collapsible-title-text' });
+	const name = header.createDiv({ cls: 'setting-item-name' });
+	name.createSpan({ text: config.title });
 	if (config.desc) {
-		title.createDiv({ text: config.desc, cls: 'babylon-collapsible-desc' });
+		name.createDiv({ text: config.desc, cls: 'babylon-collapsible-desc' });
 	}
 
 	if (config.headerControl) {
-		const controls = summary.createDiv({ cls: 'babylon-collapsible-controls' });
+		const controls = header.createDiv({
+			cls: 'setting-item-control babylon-collapsible-controls',
+		});
 		config.headerControl(controls);
-		// interactive controls must not toggle the <details> on click
+		// interactive controls must not fold the group when clicked
 		controls.addEventListener('click', (e) => e.stopPropagation());
 	}
 
-	const body = details.createDiv({ cls: 'babylon-collapsible-body' });
+	const body = group.createDiv({ cls: 'setting-items babylon-collapsible-body' });
+
+	const applyState = (open: boolean): void => {
+		group.toggleClass('is-open', open);
+	};
+	applyState(config.defaultOpen ?? false);
+
+	// foldable groups fold on header click; toggle-driven groups stay static
+	if (config.toggleable !== false) {
+		header.addEventListener('click', () => applyState(!group.classList.contains('is-open')));
+	}
 
 	return {
-		details,
+		details: group,
 		body,
-		setOpen: (open) => {
-			details.open = open;
-		},
-		isOpen: () => details.open,
+		setOpen: applyState,
+		isOpen: () => group.classList.contains('is-open'),
 	};
 }
 
