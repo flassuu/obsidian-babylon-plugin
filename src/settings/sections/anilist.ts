@@ -471,57 +471,47 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 			});
 		});
 
-	// Personalization — collapsible group whose header carries the enable toggle
+	// Personalization — collapsible group whose header carries the enable toggle;
+	// open state follows the toggle (no manual folding)
 	const personalization = createCollapsible(containerEl, {
 		title: tr('settings-anilist-personalization'),
 		desc: tr('settings-anilist-personalization-desc'),
 		defaultOpen: personalizationOn,
 		key: 'anime-personalization',
 		level: 3,
+		toggleable: false,
 		headerControl: (controls) => {
 			createObsidianToggle(controls, personalizationOn, (value) => {
 				plugin.settings.anilistAuth.personalizationEnabled = value;
 				void plugin.saveSettings();
 				renderPersonalizationBody();
-				if (value) personalization.setOpen(true);
+				personalization.setOpen(value);
 			}, tr('settings-anilist-personalization'));
 		},
 	});
 
 	function renderPersonalizationBody(): void {
 		personalization.body.empty();
-		if (!plugin.settings.anilistAuth.personalizationEnabled) {
-			personalization.body.createEl('p', {
-				text: tr('settings-personalization-off'),
-				cls: 'setting-item-description',
-			});
-			return;
-		}
+		if (!plugin.settings.anilistAuth.personalizationEnabled) return;
 
 		createTokenUI(personalization.body, plugin);
+		createConnectionUI(personalization.body, plugin);
 
-		// Connection — authorize + test
-		const connection = createCollapsible(personalization.body, {
-			title: tr('settings-test'),
-			desc: tr('settings-test-desc'),
-			defaultOpen: true,
-			key: 'anime-connection',
-			level: 4,
-		});
-		createConnectionUI(connection.body, plugin);
-
-		// Enable sync — collapsible group whose header carries the enable toggle
+		// Enable sync — collapsible group whose header carries the enable toggle;
+		// sub-parameters expand when sync is on and close when it is off
 		const sync = createCollapsible(personalization.body, {
 			title: tr('settings-sync-enabled'),
 			desc: tr('settings-sync-enabled-desc'),
 			defaultOpen: plugin.settings.sync.enabled,
 			key: 'anime-sync',
 			level: 4,
+			toggleable: false,
 			headerControl: (controls) => {
 				createObsidianToggle(controls, plugin.settings.sync.enabled, (value) => {
 					plugin.settings.sync.enabled = value;
 					void plugin.saveSettings();
 					renderSyncBody();
+					sync.setOpen(value);
 				}, tr('settings-sync-enabled'));
 			},
 		});

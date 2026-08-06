@@ -89,18 +89,19 @@ export function createMediaSection(
 		const settings = plugin.settings.media[mt.key];
 		if (!settings) continue;
 
-		// each media type is a collapsible group with an enable toggle in the header
+		// each media type is a collapsible group with an enable toggle in the header;
+		// open state follows the toggle (no manual folding)
 		const section = createCollapsible(containerEl, {
 			title: tr(mt.labelKey),
-			defaultOpen: mt.key === 'anime' && settings.enabled,
+			defaultOpen: settings.enabled,
 			key: `media-${mt.key}`,
 			level: 2,
+			toggleable: false,
 			headerControl: (controls) => {
 				createObsidianToggle(controls, settings.enabled, (value) => {
 					settings.enabled = value;
 					void plugin.saveSettings();
-					// collapse the group when the type is disabled
-					if (!value) section.setOpen(false);
+					section.setOpen(value);
 				}, tr(mt.labelKey));
 			},
 		});

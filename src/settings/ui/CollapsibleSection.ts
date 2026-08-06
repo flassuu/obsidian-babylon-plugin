@@ -13,6 +13,9 @@ export interface CollapsibleConfig {
 	level?: number;
 	// optional right-side header control (toggle / buttons)
 	headerControl?: (controls: HTMLElement) => void;
+	// when false the header is a plain heading: clicking it never folds/unfolds,
+	// open state is driven only via setOpen() (e.g. by an enable toggle)
+	toggleable?: boolean;
 }
 
 export interface CollapsibleSection {
@@ -33,6 +36,11 @@ export function createCollapsible(
 	if (config.key) details.dataset.collapseKey = config.key;
 
 	const summary = details.createEl('summary', { cls: 'babylon-collapsible-header' });
+
+	// non-toggleable groups act as plain headings — clicking must not fold
+	if (config.toggleable === false) {
+		summary.addEventListener('click', (e) => e.preventDefault());
+	}
 
 	const title = summary.createDiv({ cls: 'babylon-collapsible-title' });
 	title.createSpan({ text: config.title, cls: 'babylon-collapsible-title-text' });
