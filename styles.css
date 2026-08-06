@@ -847,7 +847,7 @@
    header row on top, then the settings below separated by dividers. */
 
 .babylon-collapsible {
-	margin: 10px 0;
+	margin: 10px 8px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
 	background: var(--background-secondary);
@@ -916,9 +916,9 @@
 	border-bottom: none;
 }
 
-/* nested cards are inset inside their parent card */
+/* nested cards span the full width of their parent — no level indentation */
 .babylon-collapsible-body .babylon-collapsible {
-	margin: 10px 12px;
+	margin: 8px 0;
 }
 
 /* folder picker embedded in a group header */
