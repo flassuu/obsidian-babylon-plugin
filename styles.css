@@ -843,30 +843,23 @@
 }
 
 /* ── Settings collapsible sections ───────────────────────────
-   Native Obsidian structure (.setting-group / .setting-item-heading /
-   .setting-items) — core and community-theme CSS style these classes,
-   so groups render exactly like Obsidian's own settings. We only fill
-   small gaps (spacing, open-state hiding, level-1 heading size). */
+   The DOM mirrors Obsidian's native .setting-group structure
+   (heading → .setting-group-search → .setting-items), so the theme's
+   CSS already draws the rounded item frames and the dividers between
+   rows — exactly like Obsidian's own settings. We only add what the
+   theme can't know: folded bodies are hidden, foldable headers are
+   clickable. No custom borders, backgrounds or paddings here. */
 
-.babylon-collapsible + .babylon-collapsible {
-	margin-top: 1.2em;
+.babylon-collapsible:not(.is-open) > .babylon-collapsible-body {
+	display: none;
 }
 
 .babylon-collapsible-header {
-	display: flex;
-	align-items: center;
-	gap: 10px;
 	cursor: pointer;
-	user-select: none;
-	list-style: none;
 }
 
 .babylon-collapsible-header.mod-static {
 	cursor: default;
-}
-
-.babylon-collapsible:not(.is-open) > .babylon-collapsible-body {
-	display: none;
 }
 
 .babylon-collapsible-header .setting-item-name {
@@ -880,36 +873,6 @@
 	font-size: 0.85em;
 	line-height: 1.4;
 	color: var(--text-muted);
-}
-
-.babylon-collapsible-level-1 > .babylon-collapsible-header .setting-item-name {
-	font-size: 1.1em;
-}
-
-.babylon-collapsible-controls {
-	margin-left: auto;
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	flex-shrink: 0;
-}
-
-.setting-group .setting-items.babylon-collapsible-body {
-	/* the core .setting-group CSS already gives .setting-items its
-	   background, rounded corners and per-item dividers, but the default
-	   theme sets --setting-items-border-width: 0 — we re-enable the
-	   border so each item set renders as the visible "rounded square"
-	   from the reference */
-	border: 1px solid var(--setting-items-border-color, var(--background-modifier-border));
-	padding: 4px 0 8px;
-}
-
-/* top-level container groups (e.g. "Media types") only host nested
-   groups, not setting rows — keep them as plain headings, no outer box.
-   Level-1 groups with direct rows (General, API keys) keep their box. */
-.babylon-collapsible-level-1 > .setting-items.babylon-collapsible-body:has(> .babylon-collapsible) {
-	border: none;
-	padding: 0;
 }
 
 /* folder picker embedded in a group header */
