@@ -5,6 +5,7 @@ import { getFieldsByCategory, getCategories } from '../../fields/FieldRegistry';
 import type { SyncFieldMap, SyncFieldSetting } from '../types';
 import { loadFieldMap, saveFieldMap, makeFieldMapPath, getDefaultFieldMap } from '../SyncFieldMap';
 import { tr } from '../../i18n';
+import { preserveReRenderState } from '../../utils/scroll';
 
 interface EditableField {
 	key: string;
@@ -95,7 +96,16 @@ export class FieldMapEditorModal extends Modal {
 
 	private render(): void {
 		const { contentEl } = this;
-		contentEl.empty();
+
+		// keep the field list scroll position while filtering/reordering
+		preserveReRenderState(contentEl, () => {
+			contentEl.empty();
+			this.renderBody();
+		}, '.babylon-field-map-list');
+	}
+
+	private renderBody(): void {
+		const { contentEl } = this;
 
 		// search filter
 		const searchInput = contentEl.createEl('input', {

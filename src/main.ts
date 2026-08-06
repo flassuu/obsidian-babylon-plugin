@@ -9,6 +9,7 @@ import { setLocale, tr } from './i18n';
 import { DEFAULT_SETTINGS, migrateSettings } from './settings/defaults';
 import type { BabylonSettings, MediaType } from './types';
 import { initFields } from './fields';
+import { getFields } from './fields/FieldRegistry';
 import { SyncEngine, extractSourceId, fetchAllListData, fetchSingleListData } from './sync';
 import { SyncReviewModal } from './sync/ui/SyncReviewModal';
 import { loadPresets, resolveActivePreset, makePresetPath, isAdvancedScoreKey } from './presets';
@@ -168,12 +169,23 @@ export default class BabylonPlugin extends Plugin {
 		const collection = await loadPresets(this.app, path);
 		const preset = resolveActivePreset(collection);
 		if (preset) {
+			const defs = getFields(type);
 			const keys = new Set<string>();
 			for (const f of preset.fields) {
+				// internal identity fields are never GraphQL fields
+				if (f.apiKey === 'sourceId' || f.apiKey === 'provider') continue;
+
 				const key = isAdvancedScoreKey(f.apiKey)
 					? 'advancedScores'
 					: f.apiKey.replace(/[^a-zA-Z0-9_]/g, '');
-				if (key) keys.add(key);
+				if (!key) continue;
+
+				// derived fields (title_en/jp/ro/ru, originalTitle) have no
+				// direct GraphQL field — they come from other fields
+				const def = defs.find((d) => d.key === key);
+				if (def && !def.graphql) continue;
+
+				keys.add(key);
 			}
 			return [...keys];
 		}

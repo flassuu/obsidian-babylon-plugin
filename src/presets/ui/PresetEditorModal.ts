@@ -8,6 +8,7 @@ import { loadPresets, savePresets, makePresetPath, ensureSingleDefault } from '.
 import { makeCopyName } from '../PresetFieldFactory';
 import { tr } from '../../i18n';
 import { ConfirmModal } from '../../ui/modals/ConfirmModal';
+import { preserveReRenderState } from '../../utils/scroll';
 
 const FIELD_TYPES: PresetFieldType[] = ['string', 'number', 'date', 'boolean', 'array', 'object'];
 const CASE_OPTIONS: FieldCase[] = ['none', 'lower', 'upper', 'capitalize', 'title'];
@@ -68,12 +69,16 @@ export class PresetEditorModal extends Modal {
 
 	private render(): void {
 		const { contentEl } = this;
-		contentEl.empty();
 
-		this.renderHeader(contentEl);
-		this.renderToolbar(contentEl);
-		this.renderFieldList(contentEl);
-		this.renderActions(contentEl);
+		// keep the field list scroll position (and expanded format blocks)
+		// when the modal re-renders after add/remove/move/expand
+		preserveReRenderState(contentEl, () => {
+			contentEl.empty();
+			this.renderHeader(contentEl);
+			this.renderToolbar(contentEl);
+			this.renderFieldList(contentEl);
+			this.renderActions(contentEl);
+		}, '.babylon-preset-list');
 	}
 
 	private renderHeader(container: HTMLElement): void {

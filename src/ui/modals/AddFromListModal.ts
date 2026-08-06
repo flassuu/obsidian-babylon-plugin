@@ -3,6 +3,7 @@ import { fetchAnilistUserId, requestAnilist } from '../../utils/fetcher';
 import { stripHtml } from '../../utils/sanitize';
 import { tr } from '../../i18n';
 import type { MediaDetails } from '../../types';
+import { preserveReRenderState } from '../../utils/scroll';
 
 // anilist graphql: fetch the user's full anime list
 const LIST_QUERY = `
@@ -128,8 +129,14 @@ export class AddFromListModal extends Modal {
 	}
 
 	private renderEntries(): void {
-		this.listContainer.empty();
+		// keep the list scroll position while typing a filter or loading more
+		preserveReRenderState(this.listContainer, () => {
+			this.listContainer.empty();
+			this.buildEntries();
+		});
+	}
 
+	private buildEntries(): void {
 		for (const entry of this.filtered) {
 			const title = this.pickTitle(entry.media.title);
 			const status = entry.status?.toLowerCase() ?? '';

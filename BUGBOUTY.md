@@ -57,3 +57,44 @@ User picks fields in settings → creates a note → placeholders like `{{banner
 - When loading `requestedFields` from settings, validate keys against field definitions and drop dead ones.
 - Add a preflight check: send a minimal query with a single field `query { Media(id: 1) { <field> } }` when adding a new field in the UI.
 - In `getSelectedGraphQLFragments` for `!def` fields, either validate first or rely on retry (already done).
+
+## [fixed] UI scrolls back to the top on every re-render in menus/modals
+
+### Symptom
+
+Opening any re-rendering modal (Preset editor, Field map editor, Sync review) and pressing the ✕ remove button, expanding/collapsing a row, moving a field, or typing a filter — the whole list jumps back to the top. The same happened in the main settings tab on `display()`.
+
+### Root cause
+
+Modals rebuild their whole body via `contentEl.empty()` + re-render on every small interaction (e.g. `PresetEditorModal.render()` after remove/move/expand). The inner scrollable list (`.babylon-preset-list`, `.babylon-field-map-list`, `.babylon-list-container`) is destroyed and recreated, resetting `scrollTop` to 0.
+
+### Solution
+
+Shared helper `src/utils/scroll.ts` → `preserveReRenderState(container, render, scrollerSelector?)`:
+
+1. Before rendering, snapshot:
+   - scroll position of the nearest scrollable ancestor (`findScrollContainer`, walks up from `container`),
+   - scroll position of an optional inner scrollable list (`scrollerSelector`),
+   - open/closed state of all `<details>` elements (keyed by `textContent`).
+2. Run the render.
+3. Restore `scrollTop` on the (recreated) elements and re-apply `<details>` states.
+
+Applied to every re-rendering surface:
+- `SettingsTab.display()` — replaced the old inline snapshot/restore (commit `5d5be2a` pattern) with the util;
+- `PresetEditorModal.render()` — selector `.babylon-preset-list`;
+- `FieldMapEditorModal.render()` — selector `.babylon-field-map-list`;
+- `SyncReviewModal.render()` — walk-up scroller only;
+- `AddFromListModal.renderEntries()` — preserves the `.babylon-list-container` list scroll while typing a filter.
+
+### Also fixed (found from the same console dump)
+
+**`badFieldKeys ['sourceId', 'provider']` noise** — `getRequestedFieldKeys()` (main.ts) fed the preset's internal identity fields into the GraphQL query, causing 2 failed requests per fetch. Now it skips `sourceId`/`provider` and derived registry fields with an empty `graphql` (`title_en/jp/ro/ru`, `originalTitle`).
+
+### Note (not a bug)
+
+Log line `notes: L=67 R=67 ★` looked suspicious but was real data: the AniList `notes` field actually contains `"67 v2"` vs local `67`. Sync correctly flagged and applied it.
+
+### How to prevent recurrence
+
+- Any modal that calls `contentEl.empty()` + rebuilds its body should wrap the render in `preserveReRenderState` (with a `scrollerSelector` if it has an inner scrollable list).
+- Don't add fields to GraphQL `requestedFields` that have no `graphql` mapping or are internal identity keys.

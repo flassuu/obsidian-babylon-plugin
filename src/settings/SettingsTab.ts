@@ -4,6 +4,7 @@ import { setLocale, tr } from '../i18n';
 import { createGeneralSection } from './sections/general';
 import { createApiSection } from './sections/api';
 import { createMediaSection } from './sections/media';
+import { preserveReRenderState } from '../utils/scroll';
 
 export class BabylonSettingTab extends PluginSettingTab {
 	plugin: BabylonPlugin;
@@ -16,17 +17,11 @@ export class BabylonSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 
-		// save scroll position and details states before re-render
-		const scrollTop = containerEl.scrollTop;
-		const detailsStates = new Map<string, boolean>();
-		containerEl.querySelectorAll('details').forEach((el) => {
-			const key = el.textContent?.trim() ?? '';
-			detailsStates.set(key, el.open);
-		});
+		// rebuild content but keep the scroll position and expanded <details>
+		preserveReRenderState(containerEl, () => {
+			containerEl.empty();
 
-		containerEl.empty();
-
-		setLocale(this.plugin.settings.language);
+			setLocale(this.plugin.settings.language);
 
 		new Setting(containerEl).setName(tr('settings-heading')).setHeading();
 
@@ -87,18 +82,9 @@ export class BabylonSettingTab extends PluginSettingTab {
 			btn.createSpan({ text: link.label });
 		}
 
-		createGeneralSection(containerEl, this.plugin);
-		createMediaSection(containerEl, this.plugin);
-		createApiSection(containerEl, this.plugin);
-
-		// restore scroll position and details states
-		containerEl.scrollTop = scrollTop;
-		containerEl.querySelectorAll('details').forEach((el) => {
-			const key = el.textContent?.trim() ?? '';
-			const wasOpen = detailsStates.get(key);
-			if (wasOpen !== undefined) {
-				el.open = wasOpen;
-			}
+			createGeneralSection(containerEl, this.plugin);
+			createMediaSection(containerEl, this.plugin);
+			createApiSection(containerEl, this.plugin);
 		});
 	}
 }

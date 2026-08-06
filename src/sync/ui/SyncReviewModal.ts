@@ -4,6 +4,7 @@ import { tr } from '../../i18n';
 import { SyncEngine } from '../SyncEngine';
 import { NoteIgnoreStore } from '../NoteIgnoreStore';
 import type BabylonPlugin from '../../main';
+import { preserveReRenderState } from '../../utils/scroll';
 
 export interface SyncReviewResult {
 	applied: boolean;
@@ -45,8 +46,15 @@ export class SyncReviewModal extends Modal {
 
 	private render(): void {
 		const { contentEl } = this;
-		contentEl.empty();
 
+		// keep scroll position when toggling a note/field re-renders the list
+		preserveReRenderState(contentEl, () => {
+			contentEl.empty();
+			this.renderBody(contentEl);
+		});
+	}
+
+	private renderBody(contentEl: HTMLElement): void {
 		if (this.changes.length === 0) {
 			contentEl.createEl('p', { text: tr('sync-no-changes') });
 			return;
