@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, setIcon } from 'obsidian';
+import { App, PluginSettingTab, setIcon } from 'obsidian';
 import type BabylonPlugin from '../main';
 import { setLocale, tr } from '../i18n';
 import { createGeneralSection } from './sections/general';
@@ -23,8 +23,6 @@ export class BabylonSettingTab extends PluginSettingTab {
 			containerEl.empty();
 
 			setLocale(this.plugin.settings.language);
-
-		new Setting(containerEl).setName(tr('settings-heading')).setHeading();
 
 		const aboutBox = containerEl.createDiv({ cls: 'babylon-about-box' });
 		const left = aboutBox.createDiv({ cls: 'babylon-about-left' });
