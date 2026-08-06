@@ -843,39 +843,42 @@
 }
 
 /* ── Settings collapsible sections ───────────────────────────
-   Built on Obsidian's native .setting-group / .setting-item-heading
-   structure, so core styles and community themes apply directly.
-   These rules only fill the small gaps core CSS does not cover. */
+   Each group renders as a rounded card (the "General" reference):
+   header row on top, then the settings below separated by dividers. */
 
 .babylon-collapsible {
 	margin: 10px 0;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
-	padding: 10px 14px;
-	background: var(--background-primary);
+	background: var(--background-secondary);
+	overflow: hidden;
 }
 
-.babylon-collapsible-header {
+.babylon-collapsible .babylon-collapsible-header {
 	display: flex;
 	align-items: center;
+	gap: 10px;
+	margin: 0;
+	padding: 10px 14px;
 	cursor: pointer;
 	user-select: none;
 	list-style: none;
+	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .babylon-collapsible-header.mod-static {
 	cursor: default;
 }
 
+.babylon-collapsible:not(.is-open) > .babylon-collapsible-header {
+	border-bottom: none;
+}
+
 .babylon-collapsible:not(.is-open) > .babylon-collapsible-body {
 	display: none;
 }
 
-.babylon-collapsible-header::-webkit-details-marker {
-	display: none;
-}
-
-.babylon-collapsible-header .setting-item-name {
+.babylon-collapsible .babylon-collapsible-header .setting-item-name {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
@@ -892,7 +895,7 @@
 	font-size: 1.1em;
 }
 
-.babylon-collapsible-controls {
+.babylon-collapsible .babylon-collapsible-controls {
 	margin-left: auto;
 	display: inline-flex;
 	align-items: center;
@@ -901,7 +904,21 @@
 }
 
 .babylon-collapsible-body {
-	padding: 2px 0 8px;
+	padding: 4px 0 6px;
+}
+
+/* divider between settings inside a card */
+.babylon-collapsible-body .setting-item + .setting-item {
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.babylon-collapsible-body > .setting-item:last-child {
+	border-bottom: none;
+}
+
+/* nested cards are inset inside their parent card */
+.babylon-collapsible-body .babylon-collapsible {
+	margin: 10px 12px;
 }
 
 /* folder picker embedded in a group header */
