@@ -1,12 +1,12 @@
 import { App, FuzzySuggestModal, Modal, Notice, Setting } from 'obsidian';
 import type BabylonPlugin from '../../main';
-import type { MediaTypeSettings } from '../../types';
 import { tr } from '../../i18n';
 import { getAnilistAuthUrl, testAnilistToken } from '../../utils/fetcher';
 import { normalizePath } from './media';
 import { FieldSelector } from '../ui/FieldSelector';
 import { GenerateTemplateModal } from '../ui/GenerateTemplateModal';
 import { addFolderPicker } from '../ui/FolderPicker';
+import { createCollapsible, createObsidianToggle } from '../ui/CollapsibleSection';
 import { SyncEngine, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, fetchAllListData } from '../../sync';
 import { SyncReviewModal } from '../../sync/ui/SyncReviewModal';
 import { FieldMapEditorModal } from '../../sync/ui/FieldMapEditorModal';
@@ -41,7 +41,7 @@ class AuthInstructionsModal extends Modal {
 	}
 }
 
-function createAuthUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
+function createTokenUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 	new Setting(containerEl)
 		.setName(tr('settings-anilist-token'))
 		.addText((text) => {
@@ -60,7 +60,12 @@ function createAuthUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 			btn.onClick(() => {
 				new AuthInstructionsModal(plugin.app).open();
 			});
-		})
+		});
+}
+
+function createConnectionUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
+	new Setting(containerEl)
+		.setName(tr('settings-anilist-authorize'))
 		.addButton((btn) => {
 			btn.setButtonText(tr('settings-anilist-authorize'));
 			btn.onClick(() => {
@@ -69,7 +74,7 @@ function createAuthUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 		});
 
 	const testSetting = new Setting(containerEl)
-		.setName(tr('settings-test'))
+		.setName(tr('settings-test-btn'))
 		.setDesc(tr('settings-test-desc'))
 		.addButton((btn) => {
 			btn.setButtonText(tr('settings-test-btn'));
@@ -94,21 +99,7 @@ function createAuthUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 		});
 }
 
-function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSettings: MediaTypeSettings | undefined): void {
-	new Setting(containerEl)
-		.setName(tr('settings-sync-enabled'))
-		.setDesc(tr('settings-sync-enabled-desc'))
-		.addToggle((toggle) => {
-			toggle.setValue(plugin.settings.sync.enabled);
-			toggle.onChange(async (value) => {
-				plugin.settings.sync.enabled = value;
-				await plugin.saveSettings();
-				plugin.settingsTab.display();
-			});
-		});
-
-	if (!plugin.settings.sync.enabled) return;
-
+function createSyncSettings(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 	new Setting(containerEl)
 		.setName(tr('settings-sync-on-startup'))
 		.setDesc(tr('settings-sync-on-startup-desc'))
@@ -174,13 +165,6 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 function createPresetSection(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 	const mediaType = 'anime';
 	const presetPath = `${plugin.settings.templateFolder}/${makePresetPath(mediaType)}`;
-
-	new Setting(containerEl).setName(tr('preset-section')).setHeading();
-
-	containerEl.createEl('p', {
-		text: tr('preset-section-desc'),
-		cls: 'setting-item-description',
-	});
 
 	const listEl = containerEl.createDiv({ cls: 'babylon-preset-settings-list' });
 
@@ -322,18 +306,6 @@ function createLegacyFieldMapUI(containerEl: HTMLElement, plugin: BabylonPlugin)
 				new FieldMapEditorModal(plugin, 'anime').open();
 			});
 		});
-}
-
-function createLegacySection(containerEl: HTMLElement, plugin: BabylonPlugin): void {
-	const details = containerEl.createEl('details', { cls: 'babylon-legacy' });
-	const summary = details.createEl('summary', { cls: 'babylon-legacy-summary' });
-	summary.createSpan({ text: tr('preset-legacy') });
-	const desc = summary.createSpan({ text: tr('preset-legacy-desc'), cls: 'babylon-legacy-desc' });
-	void desc;
-
-	const body = details.createDiv({ cls: 'babylon-legacy-body' });
-	createLegacyFieldMapUI(body, plugin);
-	createTemplateManager(body, plugin);
 }
 
 function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin): void {
@@ -485,6 +457,7 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 	const personalizationOn = plugin.settings.anilistAuth.personalizationEnabled;
 	const app = plugin.app;
 
+	// Provider
 	new Setting(containerEl)
 		.setName(tr('settings-provider'))
 		.addDropdown((dropdown) => {
@@ -498,28 +471,79 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 			});
 		});
 
-	new Setting(containerEl)
-		.setName(tr('settings-anilist-personalization'))
-		.setDesc(tr('settings-anilist-personalization-desc'))
-		.addToggle((toggle) => {
-			toggle.setValue(personalizationOn);
-			toggle.onChange(async (value) => {
+	// Personalization — collapsible group whose header carries the enable toggle
+	const personalization = createCollapsible(containerEl, {
+		title: tr('settings-anilist-personalization'),
+		desc: tr('settings-anilist-personalization-desc'),
+		defaultOpen: personalizationOn,
+		key: 'anime-personalization',
+		level: 3,
+		headerControl: (controls) => {
+			createObsidianToggle(controls, personalizationOn, (value) => {
 				plugin.settings.anilistAuth.personalizationEnabled = value;
-				await plugin.saveSettings();
-				plugin.settingsTab.display();
+				void plugin.saveSettings();
+				renderPersonalizationBody();
+				if (value) personalization.setOpen(true);
+			}, tr('settings-anilist-personalization'));
+		},
+	});
+
+	function renderPersonalizationBody(): void {
+		personalization.body.empty();
+		if (!plugin.settings.anilistAuth.personalizationEnabled) {
+			personalization.body.createEl('p', {
+				text: tr('settings-personalization-off'),
+				cls: 'setting-item-description',
 			});
+			return;
+		}
+
+		createTokenUI(personalization.body, plugin);
+
+		// Connection — authorize + test
+		const connection = createCollapsible(personalization.body, {
+			title: tr('settings-test'),
+			desc: tr('settings-test-desc'),
+			defaultOpen: true,
+			key: 'anime-connection',
+			level: 4,
+		});
+		createConnectionUI(connection.body, plugin);
+
+		// Enable sync — collapsible group whose header carries the enable toggle
+		const sync = createCollapsible(personalization.body, {
+			title: tr('settings-sync-enabled'),
+			desc: tr('settings-sync-enabled-desc'),
+			defaultOpen: plugin.settings.sync.enabled,
+			key: 'anime-sync',
+			level: 4,
+			headerControl: (controls) => {
+				createObsidianToggle(controls, plugin.settings.sync.enabled, (value) => {
+					plugin.settings.sync.enabled = value;
+					void plugin.saveSettings();
+					renderSyncBody();
+				}, tr('settings-sync-enabled'));
+			},
 		});
 
-	if (personalizationOn) {
-		createAuthUI(containerEl, plugin);
-		createSyncUI(containerEl, plugin, animeSettings);
+		function renderSyncBody(): void {
+			sync.body.empty();
+			if (!plugin.settings.sync.enabled) return;
+			createSyncSettings(sync.body, plugin);
+		}
+		renderSyncBody();
 	}
+	renderPersonalizationBody();
 
-	// Preset system — the visual note builder
-	createPresetSection(containerEl, plugin);
-
-	// Legacy: template manager + field map
-	createLegacySection(containerEl, plugin);
+	// Presets — the visual note builder
+	const presets = createCollapsible(containerEl, {
+		title: tr('preset-section'),
+		desc: tr('preset-section-desc'),
+		defaultOpen: true,
+		key: 'anime-presets',
+		level: 3,
+	});
+	createPresetSection(presets.body, plugin);
 
 	// Output folder
 	if (animeSettings) {
@@ -592,4 +616,14 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 		cls: 'setting-item-description',
 	});
 
+	// Legacy: template manager + field map (deprecated, hidden by default)
+	const legacy = createCollapsible(containerEl, {
+		title: tr('preset-legacy'),
+		desc: tr('preset-legacy-desc'),
+		defaultOpen: false,
+		key: 'anime-legacy',
+		level: 3,
+	});
+	createLegacyFieldMapUI(legacy.body, plugin);
+	createTemplateManager(legacy.body, plugin);
 }

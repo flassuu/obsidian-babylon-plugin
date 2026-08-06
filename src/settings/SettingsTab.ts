@@ -5,6 +5,7 @@ import { createGeneralSection } from './sections/general';
 import { createApiSection } from './sections/api';
 import { createMediaSection } from './sections/media';
 import { preserveReRenderState } from '../utils/scroll';
+import { createCollapsible } from './ui/CollapsibleSection';
 
 export class BabylonSettingTab extends PluginSettingTab {
 	plugin: BabylonPlugin;
@@ -82,9 +83,26 @@ export class BabylonSettingTab extends PluginSettingTab {
 			btn.createSpan({ text: link.label });
 		}
 
-			createGeneralSection(containerEl, this.plugin);
-			createMediaSection(containerEl, this.plugin);
-			createApiSection(containerEl, this.plugin);
+			const general = createCollapsible(containerEl, {
+				title: tr('settings-general'),
+				defaultOpen: true,
+				key: 'section-general',
+			});
+			createGeneralSection(general.body, this.plugin);
+
+			const media = createCollapsible(containerEl, {
+				title: tr('settings-media'),
+				defaultOpen: true,
+				key: 'section-media',
+			});
+			createMediaSection(media.body, this.plugin);
+
+			const api = createCollapsible(containerEl, {
+				title: tr('settings-api-keys'),
+				defaultOpen: false,
+				key: 'section-api',
+			});
+			createApiSection(api.body, this.plugin);
 		});
 	}
 }

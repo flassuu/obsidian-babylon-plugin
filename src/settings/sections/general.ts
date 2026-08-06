@@ -8,8 +8,6 @@ export function createGeneralSection(
 	containerEl: HTMLElement,
 	plugin: BabylonPlugin,
 ): void {
-	containerEl.createEl('h2', { text: tr('settings-general') });
-
 	new Setting(containerEl)
 		.setName(tr('settings-language'))
 		.addDropdown((dropdown) => {

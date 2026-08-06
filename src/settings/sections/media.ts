@@ -4,6 +4,7 @@ import { tr } from '../../i18n';
 import type { MediaType } from '../../types';
 import { createAnimeSection } from './anilist';
 import { addFolderPicker } from '../ui/FolderPicker';
+import { createCollapsible, createObsidianToggle } from '../ui/CollapsibleSection';
 
 const MEDIA_TYPES: { key: MediaType; labelKey: string }[] = [
 	{ key: 'anime', labelKey: 'settings-media-anime' },
@@ -83,42 +84,32 @@ export function createMediaSection(
 	containerEl: HTMLElement,
 	plugin: BabylonPlugin,
 ): void {
-	containerEl.createEl('h2', { text: tr('settings-media') });
-
 	for (const mt of MEDIA_TYPES) {
 		ensureMediaSettings(plugin, mt.key);
 		const settings = plugin.settings.media[mt.key];
 		if (!settings) continue;
 
-		const section = containerEl.createDiv();
-		section.addClass('babylon-media-section');
-
-		new Setting(section)
-			.setName(tr(mt.labelKey))
-			.addToggle((toggle) =>
-				toggle
-					.setValue(settings.enabled)
-					.onChange(async (value) => {
-						settings.enabled = value;
-						await plugin.saveSettings();
-						// toggle sub-settings visibility instead of full re-render
-						const sub = section.querySelector('.babylon-media-sub');
-						if (sub instanceof HTMLElement) {
-							sub.toggleClass('babylon-media-hidden', !value);
-						}
-					}),
-			);
-
-		const subSection = section.createDiv({ cls: 'babylon-media-sub' });
-		if (!settings.enabled) {
-			subSection.addClass('babylon-media-hidden');
-		}
+		// each media type is a collapsible group with an enable toggle in the header
+		const section = createCollapsible(containerEl, {
+			title: tr(mt.labelKey),
+			defaultOpen: mt.key === 'anime' && settings.enabled,
+			key: `media-${mt.key}`,
+			level: 2,
+			headerControl: (controls) => {
+				createObsidianToggle(controls, settings.enabled, (value) => {
+					settings.enabled = value;
+					void plugin.saveSettings();
+					// collapse the group when the type is disabled
+					if (!value) section.setOpen(false);
+				}, tr(mt.labelKey));
+			},
+		});
 
 		if (mt.key === 'anime') {
-			createAnimeSection(subSection, plugin);
+			createAnimeSection(section.body, plugin);
 		} else {
-			createBasicSettings(subSection, plugin, mt.key);
-			subSection.createEl('p', {
+			createBasicSettings(section.body, plugin, mt.key);
+			section.body.createEl('p', {
 				text: tr('settings-coming-soon'),
 				cls: 'setting-item-description',
 			});

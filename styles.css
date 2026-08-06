@@ -383,10 +383,6 @@
 	color: var(--text-accent);
 }
 
-.babylon-media-hidden {
-	display: none;
-}
-
 /* Sync Review Modal */
 .babylon-sync-summary {
 	margin-bottom: 16px;
@@ -846,28 +842,80 @@
 	font-size: 0.85em;
 }
 
-/* legacy block */
+/* ── Settings collapsible sections ─────────────────────────── */
 
-.babylon-legacy {
-	margin: 12px 0;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
+.babylon-collapsible {
+	margin: 2px 0;
 }
 
-.babylon-legacy summary {
+.babylon-collapsible + .babylon-collapsible {
+	margin-top: 10px;
+}
+
+.babylon-collapsible-header {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
 	cursor: pointer;
-	padding: 8px 12px;
-	font-weight: 600;
+	user-select: none;
+	padding: 6px 0;
+	border-radius: 6px;
+	list-style: none;
 }
 
-.babylon-legacy-desc {
-	display: block;
-	font-weight: normal;
+.babylon-collapsible-header::-webkit-details-marker {
+	display: none;
+}
+
+.babylon-collapsible-header:hover {
+	background: var(--background-modifier-hover);
+}
+
+.babylon-collapsible-header:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -1px;
+}
+
+.babylon-collapsible-title {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.babylon-collapsible-title-text {
+	font-weight: 600;
+	line-height: 1.4;
+	color: var(--text-normal);
+}
+
+.babylon-collapsible-level-1 > .babylon-collapsible-header .babylon-collapsible-title-text {
+	font-size: 1.15em;
+}
+
+.babylon-collapsible-level-2 > .babylon-collapsible-header .babylon-collapsible-title-text {
+	font-size: 1.05em;
+}
+
+.babylon-collapsible-desc {
+	font-weight: 400;
 	font-size: 0.85em;
+	line-height: 1.4;
 	color: var(--text-muted);
 }
 
-.babylon-legacy-body {
-	padding: 0 12px 8px;
-	border-top: 1px solid var(--background-modifier-border);
+.babylon-collapsible-controls {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+.babylon-collapsible-body {
+	padding: 4px 0 6px;
+}
+
+.babylon-collapsible-body .babylon-collapsible-body {
+	padding-top: 2px;
 }

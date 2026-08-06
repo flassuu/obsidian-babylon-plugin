@@ -21,7 +21,8 @@ export function preserveReRenderState(
 
 	const detailsStates = new Map<string, boolean>();
 	container.querySelectorAll('details').forEach((el) => {
-		detailsStates.set(el.textContent?.trim() ?? '', el.open);
+		const key = el.dataset.collapseKey ?? (el.textContent?.trim() ?? '');
+		detailsStates.set(key, el.open);
 	});
 
 	render();
@@ -35,7 +36,8 @@ export function preserveReRenderState(
 	}
 
 	container.querySelectorAll('details').forEach((el) => {
-		const wasOpen = detailsStates.get(el.textContent?.trim() ?? '');
+		const key = el.dataset.collapseKey ?? (el.textContent?.trim() ?? '');
+		const wasOpen = detailsStates.get(key);
 		if (wasOpen !== undefined) el.open = wasOpen;
 	});
 }

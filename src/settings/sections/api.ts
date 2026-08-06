@@ -6,8 +6,6 @@ export function createApiSection(
 	containerEl: HTMLElement,
 	plugin: BabylonPlugin,
 ): void {
-	containerEl.createEl('h2', { text: tr('settings-api-keys') });
-
 	new Setting(containerEl)
 		.setName(tr('settings-api-key-omdb'))
 		.addText((text) =>
