@@ -208,22 +208,24 @@ src/presets/
 
 ### Tasks
 
-- [ ] **presets/types.ts** — `PresetField`, `FieldFormat`, `MediaPreset`, versioning
-- [ ] **PresetStore.ts** — load/save/list/delete presets in vault; resolve active default; validation (unique property names, non-empty)
-- [ ] **PresetFieldFactory.ts** — generate default preset from FieldRegistry (personal + core fields, sensible formatting defaults)
-- [ ] **PresetFormatter.ts** — formatting engine: case, valueMap, dateFormat, number scale (pure function)
-- [ ] **PresetFrontmatter.ts** — build ordered frontmatter YAML from preset + MediaDetails (reuse surgical YAML serialization utils)
-- [ ] **PresetTemplate.ts** — render template body: `{{property}}` → formatted value, `{{property_list}}` for arrays; unknown placeholders left as-is
-- [ ] **TemplateService integration** — `render()` accepts preset; frontmatter from preset, body from template
-- [ ] **ContentService integration** — `createNote()` resolves active preset, builds frontmatter + body, combines
-- [ ] **PresetPickerModal** — choose preset at creation when multiple exist and none default
-- [ ] **SyncEngine integration** — replace field map with active preset (`fields` where `sync=true`); keep field-map fallback for legacy
-- [ ] **Sync + formatting** — apply field format to remote value before comparison (local is already formatted)
-- [ ] **PresetEditorModal** — ordered editable field list, property names, apiKey selection, sync toggles, format flags UI, preset meta (name/default/duplicate/delete)
-- [ ] **Settings section** — preset list per media type: create, duplicate, delete, set default, open editor
-- [ ] **i18n** — all new UI strings (en/ru)
-- [ ] **Edge cases** — advancedScores (object/sub-fields), arrays (genres), custom API fields, empty values
-- [ ] **Docs** — update TEMPLATE.md, SPECIFICATION.md, ROADMAP.md
+- [x] **presets/types.ts** — `PresetField`, `FieldFormat`, `MediaPreset`, versioning
+- [x] **PresetStore.ts** — load/save/list/delete presets in vault; resolve active default; validation (unique property names, non-empty)
+- [x] **PresetFieldFactory.ts** — generate default preset from FieldRegistry (personal + core fields, sensible formatting defaults)
+- [x] **PresetFormatter.ts** — formatting engine: case, valueMap, dateFormat, number scale (pure function)
+- [x] **PresetFrontmatter.ts** — build ordered frontmatter YAML from preset + MediaDetails (reuse surgical YAML serialization utils)
+- [x] **PresetTemplate.ts** — render template body: `{{property}}` → formatted value, `{{property_list}}` for arrays; unknown placeholders left as-is
+- [x] **TemplateService integration** — hybrid render in `ContentService.createNote()` (frontmatter from preset, body from template via `renderPresetBody`); `TemplateService` stays as legacy fallback
+- [x] **ContentService integration** — `createNote()` resolves active preset (default → first → picker), builds frontmatter + body, combines
+- [x] **PresetPickerModal** — choose preset at creation when multiple exist and none default
+- [x] **SyncEngine integration** — replace field map with active preset (`fields` where `sync=true`); keep field-map fallback for legacy
+- [x] **Sync + formatting** — apply field format to remote value before comparison (local is already formatted); advancedScores flattening via `detailsKeyFor`
+- [x] **PresetEditorModal** — ordered editable field list, property names, apiKey selection, sync toggles, format flags UI, preset meta (name/default/duplicate/delete)
+- [x] **Settings section** — preset list per media type: create, duplicate, delete, set default, open editor (+ legacy template/field-map under `<details>`)
+- [x] **GenerateTemplateModal** — body-only mode for presets (aliases = preset `property` names)
+- [x] **i18n** — all new UI strings (en/ru)
+- [x] **Edge cases** — advancedScores (object/sub-fields), arrays (genres), custom API fields, empty values (verified via headless harness)
+- [x] **Docs** — update TEMPLATE.md, SPECIFICATION.md, ROADMAP.md
+- [ ] **Runtime test in Obsidian** — create note with a preset, run sync (rename + format), verify review modal diffs
 
 ### Full TZ (data model, flows, UI spec)
 

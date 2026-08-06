@@ -674,3 +674,200 @@
 }
 
 
+
+/* ── Preset System ─────────────────────────────────────────── */
+
+.babylon-preset-header {
+	margin-bottom: 8px;
+}
+
+.babylon-preset-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 8px 0;
+	max-height: 45vh;
+	overflow-y: auto;
+}
+
+.babylon-preset-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 6px 8px;
+}
+
+.babylon-preset-move {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.babylon-preset-move-btn,
+.babylon-preset-pick,
+.babylon-preset-expand,
+.babylon-preset-remove,
+.babylon-preset-vmap-remove,
+.babylon-preset-vmap-add {
+	background: transparent;
+	border: none;
+	color: var(--text-muted);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px;
+	border-radius: 4px;
+}
+
+.babylon-preset-move-btn:hover,
+.babylon-preset-pick:hover,
+.babylon-preset-expand:hover,
+.babylon-preset-remove:hover,
+.babylon-preset-vmap-remove:hover,
+.babylon-preset-vmap-add:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.babylon-preset-property {
+	width: 130px;
+}
+
+.babylon-preset-apikey {
+	width: 150px;
+}
+
+.babylon-preset-type {
+	width: 90px;
+}
+
+.babylon-preset-sync {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 0.85em;
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.babylon-preset-format {
+	width: 100%;
+	border-top: 1px dashed var(--background-modifier-border);
+	margin-top: 4px;
+	padding-top: 6px;
+}
+
+.babylon-preset-vmap-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-bottom: 4px;
+}
+
+.babylon-preset-vmap-row input {
+	width: 110px;
+}
+
+.babylon-preset-vmap-arrow {
+	color: var(--text-muted);
+}
+
+.babylon-preset-num {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.babylon-preset-num-input {
+	width: 90px;
+}
+
+.babylon-preset-empty {
+	text-align: center;
+	padding: 16px;
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+/* settings list of presets */
+
+.babylon-preset-settings-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 8px 0;
+}
+
+.babylon-preset-settings-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 8px 10px;
+}
+
+.babylon-preset-settings-info {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.babylon-preset-settings-name {
+	font-weight: 600;
+}
+
+.babylon-preset-settings-badge {
+	font-size: 0.75em;
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 10px;
+	padding: 1px 8px;
+}
+
+.babylon-preset-settings-count {
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.babylon-preset-settings-btns {
+	display: flex;
+	gap: 6px;
+}
+
+.babylon-preset-settings-btns button {
+	font-size: 0.85em;
+}
+
+/* legacy block */
+
+.babylon-legacy {
+	margin: 12px 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+}
+
+.babylon-legacy summary {
+	cursor: pointer;
+	padding: 8px 12px;
+	font-weight: 600;
+}
+
+.babylon-legacy-desc {
+	display: block;
+	font-weight: normal;
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.babylon-legacy-body {
+	padding: 0 12px 8px;
+	border-top: 1px solid var(--background-modifier-border);
+}

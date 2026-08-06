@@ -7,9 +7,21 @@ import { normalizePath } from './media';
 import { FieldSelector } from '../ui/FieldSelector';
 import { GenerateTemplateModal } from '../ui/GenerateTemplateModal';
 import { addFolderPicker } from '../ui/FolderPicker';
-import { SyncEngine, loadFieldMap, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, fetchAllListData } from '../../sync';
+import { SyncEngine, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, fetchAllListData } from '../../sync';
 import { SyncReviewModal } from '../../sync/ui/SyncReviewModal';
 import { FieldMapEditorModal } from '../../sync/ui/FieldMapEditorModal';
+import {
+	makePresetPath,
+	loadPresets,
+	savePresets,
+	ensureSingleDefault,
+	buildDefaultPreset,
+	makeCopyName,
+	makeFieldId,
+	resolveActivePreset,
+} from '../../presets';
+import type { MediaPreset } from '../../presets';
+import { PresetEditorModal } from '../../presets/ui/PresetEditorModal';
 
 const CLIENT_ID = '45744';
 
@@ -108,51 +120,6 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 			});
 		});
 
-	const mapPath = `${plugin.settings.templateFolder}/${makeFieldMapPath('anime')}`;
-
-	// Load field map status on next tick to avoid blocking render
-	window.setTimeout(() => {
-		loadFieldMap(plugin.app, mapPath).then((existingMap) => {
-			const count = existingMap?.syncFields?.filter((f) => f.sync).length ?? 0;
-			const descEls = containerEl.querySelectorAll('.setting-item-desc');
-			descEls.forEach((el) => {
-				if (el.textContent?.includes('field') || el.textContent?.includes('Field')) {
-					const statusText = count > 0
-						? tr('sync-field-map-exists').replace('{count}', String(count))
-						: tr('sync-field-map-missing');
-					el.textContent = statusText;
-				}
-			});
-		}).catch(() => {});
-	}, 100);
-
-	// Field map generate + edit buttons
-	new Setting(containerEl)
-		.setName(tr('sync-field-map'))
-		.setDesc(tr('sync-field-map-missing'))
-		.addButton((btn) => {
-			btn.setButtonText(tr('sync-generate-map'));
-			btn.onClick(async () => {
-				const animeS = plugin.settings.media.anime;
-				if (!animeS?.templatePath) {
-					new Notice('No template configured. Generate a template first.');
-					return;
-				}
-				const map = await generateFieldMapFromTemplate(plugin.app, 'anime', animeS.templatePath);
-				if (map) {
-					await saveFieldMap(plugin.app, mapPath, map);
-					new Notice(tr('sync-field-map-generated').replace('{path}', mapPath));
-					plugin.settingsTab.display();
-				}
-			});
-		})
-		.addButton((btn) => {
-			btn.setButtonText(tr('field-map-editor-edit'));
-			btn.onClick(() => {
-				new FieldMapEditorModal(plugin, 'anime').open();
-			});
-		});
-
 	// Sync all button
 	new Setting(containerEl)
 		.setName(tr('sync-all'))
@@ -202,6 +169,171 @@ function createSyncUI(containerEl: HTMLElement, plugin: BabylonPlugin, _animeSet
 				});
 			});
 		});
+}
+
+function createPresetSection(containerEl: HTMLElement, plugin: BabylonPlugin): void {
+	const mediaType = 'anime';
+	const presetPath = `${plugin.settings.templateFolder}/${makePresetPath(mediaType)}`;
+
+	new Setting(containerEl).setName(tr('preset-section')).setHeading();
+
+	containerEl.createEl('p', {
+		text: tr('preset-section-desc'),
+		cls: 'setting-item-description',
+	});
+
+	const listEl = containerEl.createDiv({ cls: 'babylon-preset-settings-list' });
+
+	async function renderList(): Promise<void> {
+		const collection = await loadPresets(plugin.app, presetPath);
+		listEl.empty();
+		if (!collection || collection.presets.length === 0) {
+			listEl.createEl('p', {
+				text: tr('preset-none-found'),
+				cls: 'setting-item-description',
+			});
+			return;
+		}
+		for (const preset of collection.presets) {
+			renderRow(listEl, preset);
+		}
+	}
+
+	function renderRow(container: HTMLElement, preset: MediaPreset): void {
+		const row = container.createDiv({ cls: 'babylon-preset-settings-row' });
+		const info = row.createDiv({ cls: 'babylon-preset-settings-info' });
+		info.createSpan({ text: preset.name, cls: 'babylon-preset-settings-name' });
+		if (preset.isDefault) {
+			info.createSpan({
+				text: tr('preset-default-badge'),
+				cls: 'babylon-preset-settings-badge',
+			});
+		}
+		info.createSpan({
+			text: tr('preset-field-count', { count: preset.fields.length }),
+			cls: 'babylon-preset-settings-count',
+		});
+
+		const btns = row.createDiv({ cls: 'babylon-preset-settings-btns' });
+		if (!preset.isDefault) {
+			const defBtn = btns.createEl('button', { text: tr('preset-set-default') });
+			defBtn.addEventListener('click', () => {
+				void (async () => {
+					const col = await loadPresets(plugin.app, presetPath);
+					if (!col) return;
+					ensureSingleDefault(col, preset.name);
+					await savePresets(plugin.app, presetPath, col);
+					await plugin.updateAnilistProvider();
+					await renderList();
+				})();
+			});
+		}
+		const editBtn = btns.createEl('button', { text: tr('preset-edit') });
+		editBtn.addEventListener('click', () => {
+			new PresetEditorModal(plugin, mediaType, preset).open();
+		});
+		const dupBtn = btns.createEl('button', { text: tr('preset-duplicate') });
+		dupBtn.addEventListener('click', () => {
+			void (async () => {
+				const col = await loadPresets(plugin.app, presetPath);
+				if (!col) return;
+				const copyName = makeCopyName(preset.name);
+				if (col.presets.some((p) => p.name === copyName)) {
+					new Notice(tr('preset-name-clash'));
+					return;
+				}
+				const copy: MediaPreset = JSON.parse(JSON.stringify(preset)) as MediaPreset;
+				copy.name = copyName;
+				copy.isDefault = false;
+				copy.fields = copy.fields.map((f) => ({ ...f, id: makeFieldId() }));
+				col.presets.push(copy);
+				await savePresets(plugin.app, presetPath, col);
+				await renderList();
+			})();
+		});
+	}
+
+	new Setting(containerEl)
+		.setName(tr('preset-create'))
+		.setDesc(tr('preset-create-desc'))
+		.addButton((btn) => {
+			btn.setButtonText(tr('preset-create'));
+			btn.setCta();
+			btn.onClick(() => {
+				void (async () => {
+					const collection = await loadPresets(plugin.app, presetPath);
+					const hasDefault = collection?.presets.some((p) => p.isDefault) ?? false;
+					const preset = buildDefaultPreset(mediaType);
+					if (hasDefault) preset.isDefault = false;
+					new PresetEditorModal(plugin, mediaType, preset).open();
+				})();
+			});
+		});
+
+	new Setting(containerEl)
+		.setName(tr('preset-regenerate'))
+		.setDesc(tr('preset-regenerate-desc'))
+		.addButton((btn) => {
+			btn.setButtonText(tr('preset-regenerate'));
+			btn.onClick(() => {
+				void (async () => {
+					const collection = await loadPresets(plugin.app, presetPath);
+					const preset = resolveActivePreset(collection);
+					if (!preset) {
+						new Notice(tr('preset-none-found'));
+						return;
+					}
+					new GenerateTemplateModal(plugin, mediaType, preset).open();
+				})();
+			});
+		});
+
+	// render the list on the next tick so the DOM is ready
+	window.setTimeout(() => {
+		void renderList();
+	}, 50);
+}
+
+function createLegacyFieldMapUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
+	const mapPath = `${plugin.settings.templateFolder}/${makeFieldMapPath('anime')}`;
+
+	new Setting(containerEl)
+		.setName(tr('sync-field-map'))
+		.setDesc(tr('sync-field-map-missing'))
+		.addButton((btn) => {
+			btn.setButtonText(tr('sync-generate-map'));
+			btn.onClick(async () => {
+				const animeS = plugin.settings.media.anime;
+				if (!animeS?.templatePath) {
+					new Notice('No template configured. Generate a template first.');
+					return;
+				}
+				const map = await generateFieldMapFromTemplate(plugin.app, 'anime', animeS.templatePath);
+				if (map) {
+					await saveFieldMap(plugin.app, mapPath, map);
+					new Notice(tr('sync-field-map-generated').replace('{path}', mapPath));
+					plugin.settingsTab.display();
+				}
+			});
+		})
+		.addButton((btn) => {
+			btn.setButtonText(tr('field-map-editor-edit'));
+			btn.onClick(() => {
+				new FieldMapEditorModal(plugin, 'anime').open();
+			});
+		});
+}
+
+function createLegacySection(containerEl: HTMLElement, plugin: BabylonPlugin): void {
+	const details = containerEl.createEl('details', { cls: 'babylon-legacy' });
+	const summary = details.createEl('summary', { cls: 'babylon-legacy-summary' });
+	summary.createSpan({ text: tr('preset-legacy') });
+	const desc = summary.createSpan({ text: tr('preset-legacy-desc'), cls: 'babylon-legacy-desc' });
+	void desc;
+
+	const body = details.createDiv({ cls: 'babylon-legacy-body' });
+	createLegacyFieldMapUI(body, plugin);
+	createTemplateManager(body, plugin);
 }
 
 function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin): void {
@@ -383,8 +515,11 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 		createSyncUI(containerEl, plugin, animeSettings);
 	}
 
-	// Template manager
-	createTemplateManager(containerEl, plugin);
+	// Preset system — the visual note builder
+	createPresetSection(containerEl, plugin);
+
+	// Legacy: template manager + field map
+	createLegacySection(containerEl, plugin);
 
 	// Output folder
 	if (animeSettings) {
@@ -450,5 +585,11 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 			});
 		});
 	}
+
+	// the template file only provides the note body when a preset exists
+	containerEl.createEl('p', {
+		text: tr('preset-body-hint'),
+		cls: 'setting-item-description',
+	});
 
 }

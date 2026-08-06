@@ -667,9 +667,9 @@ All UI strings stored in translation tables with en ↔ ru.
 
 ---
 
-## 15. Preset System (Planned — v0.5.0)
+## 15. Preset System (v0.5.0)
 
-> **Status:** Planned. Replaces the manual template + field-map editing workflow with a visual **preset** system. Field map (Section 7) becomes legacy; SyncEngine keeps a fallback to it when no preset exists.
+> **Status:** Implemented (core + UI) on branch `preset-system`. Replaces the manual template + field-map editing workflow with a visual **preset** system. Field map (Section 7) becomes legacy; SyncEngine keeps a fallback to it when no preset exists.
 
 ### 15.1 Goal
 
@@ -712,21 +712,25 @@ interface PresetField {
 }
 
 interface MediaPreset {
-  version: number;
-  mediaType: MediaType;
   name: string;
   isDefault: boolean;
   fields: PresetField[];   // ordered by `order`
 }
+
+interface PresetCollection {
+  version: number;         // PRESET_COLLECTION_VERSION = 1
+  mediaType: MediaType;
+  presets: MediaPreset[];
+}
 ```
 
-**Defaults:** When a media type has no preset, generate one from `FieldRegistry` (all `personal` + core fields), `property = apiKey`, sensible formatting (e.g. `myStatus` case=capitalize, `startedAt`/`completedAt` dateFormat=YYYY-MM-DD).
+**Defaults:** When a media type has no preset, generate one from `FieldRegistry` (all `personal` + core fields), `property = apiKey`, sensible formatting (e.g. `myStatus` case=capitalize, `startedAt`/`completedAt` dateFormat=YYYY-MM-DD), `sourceId`/`provider` appended as non-sync identity fields.
 
 ### 15.4 Formatting engine
 
-`PresetFormatter.apply(raw, field.format): string | number | null`
+`PresetFormatter.apply(raw, field.format): string | number | boolean | null`
 
-Applied in order: `case` → `valueMap` → `dateFormat` → `number`. Pure, no side effects.
+Applied in order: `valueMap` → `case` → `dateFormat` → `number`. Pure, no side effects.
 
 - **case:** transform string casing (lower/upper/capitalize/title)
 - **valueMap:** exact-match lookup on the string value; no match → value unchanged
@@ -765,7 +769,7 @@ per note:
 
 - Field map remains a **fallback** if no preset exists for the media type (legacy support).
 - Formatting is applied to the **remote** side before comparison — the local file already holds formatted values.
-- `advancedScores`: keep current auto-expansion into sub-fields; each sub-field inherits the parent field's format.
+- **`advancedScores`:** each sub-value is its own preset field with `apiKey = advancedScores.<Name>`. Values resolve via the provider's flat key `advancedScore_<camel>` (`detailsKeyFor()`), falling back to scanning the raw `advancedScores` object. Sync lookups use the camelized remote key (`remoteKeyFor()` → `advancedScores.<camel>`).
 
 ### 15.7 UI — PresetEditorModal
 

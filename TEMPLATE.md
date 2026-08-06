@@ -2,6 +2,18 @@
 
 Templates are `.md` files with placeholders that get replaced with actual data from the API when creating notes.
 
+## Preset mode (recommended, v0.5.0)
+
+With a **preset** configured for a media type, the preset owns the frontmatter and the template file only provides the **body** of the note:
+
+1. In **Settings → Media Types → Presets** open the preset editor (or press **Regenerate template**).
+2. The preset defines which fields exist and their frontmatter names.
+3. The generated body template uses the preset's `property` names as placeholders — `{{property}}` for scalars, `{{property_list}}` for arrays.
+4. Renaming a field in the preset changes the placeholder used in templates — one name everywhere.
+5. When no preset exists, the legacy full-template rendering below applies.
+
+## Legacy mode (no preset)
+
 ## How it works
 
 1. Create a `.md` file anywhere in your vault
