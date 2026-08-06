@@ -894,8 +894,22 @@
 	flex-shrink: 0;
 }
 
-.babylon-collapsible-body {
+.setting-group .setting-items.babylon-collapsible-body {
+	/* the core .setting-group CSS already gives .setting-items its
+	   background, rounded corners and per-item dividers, but the default
+	   theme sets --setting-items-border-width: 0 — we re-enable the
+	   border so each item set renders as the visible "rounded square"
+	   from the reference */
+	border: 1px solid var(--setting-items-border-color, var(--background-modifier-border));
 	padding: 4px 0 8px;
+}
+
+/* top-level container groups (e.g. "Media types") only host nested
+   groups, not setting rows — keep them as plain headings, no outer box.
+   Level-1 groups with direct rows (General, API keys) keep their box. */
+.babylon-collapsible-level-1 > .setting-items.babylon-collapsible-body:has(> .babylon-collapsible) {
+	border: none;
+	padding: 0;
 }
 
 /* folder picker embedded in a group header */
