@@ -504,34 +504,34 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 
 		createTokenUI(personalization.body, plugin);
 		createConnectionUI(personalization.body, plugin);
-
-		// Enable sync — collapsible group whose header carries the enable toggle;
-		// sub-parameters expand when sync is on and close when it is off
-		const sync = createCollapsible(personalization.body, {
-			title: tr('settings-sync-enabled'),
-			desc: tr('settings-sync-enabled-desc'),
-			defaultOpen: plugin.settings.sync.enabled,
-			key: 'anime-sync',
-			level: 4,
-			toggleable: false,
-			headerControl: (controls) => {
-				createObsidianToggle(controls, plugin.settings.sync.enabled, (value) => {
-					plugin.settings.sync.enabled = value;
-					void plugin.saveSettings();
-					renderSyncBody();
-					sync.setOpen(value);
-				}, tr('settings-sync-enabled'));
-			},
-		});
-
-		function renderSyncBody(): void {
-			sync.body.empty();
-			if (!plugin.settings.sync.enabled) return;
-			createSyncSettings(sync.body, plugin);
-		}
-		renderSyncBody();
 	}
 	renderPersonalizationBody();
+
+	// Enable sync — collapsible group whose header carries the enable toggle;
+	// sub-parameters expand when sync is on and close when it is off
+	const sync = createCollapsible(containerEl, {
+		title: tr('settings-sync-enabled'),
+		desc: tr('settings-sync-enabled-desc'),
+		defaultOpen: plugin.settings.sync.enabled,
+		key: 'anime-sync',
+		level: 3,
+		toggleable: false,
+		headerControl: (controls) => {
+			createObsidianToggle(controls, plugin.settings.sync.enabled, (value) => {
+				plugin.settings.sync.enabled = value;
+				void plugin.saveSettings();
+				renderSyncBody();
+				sync.setOpen(value);
+			}, tr('settings-sync-enabled'));
+		},
+	});
+
+	function renderSyncBody(): void {
+		sync.body.empty();
+		if (!plugin.settings.sync.enabled) return;
+		createSyncSettings(sync.body, plugin);
+	}
+	renderSyncBody();
 
 	// Presets — the visual note builder
 	const presets = createCollapsible(containerEl, {
