@@ -1,11 +1,11 @@
-import { App, FuzzySuggestModal, Modal, Notice, Setting } from 'obsidian';
+import { App, DropdownComponent, FuzzySuggestModal, Modal, Notice, Setting } from 'obsidian';
 import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import { getAnilistAuthUrl, testAnilistToken } from '../../utils/fetcher';
 import { normalizePath } from './media';
 import { FieldSelector } from '../ui/FieldSelector';
 import { GenerateTemplateModal } from '../ui/GenerateTemplateModal';
-import { addFolderPicker } from '../ui/FolderPicker';
+import { addFolderPickerToControl } from '../ui/FolderPicker';
 import { createCollapsible, createObsidianToggle } from '../ui/CollapsibleSection';
 import { SyncEngine, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, fetchAllListData } from '../../sync';
 import { SyncReviewModal } from '../../sync/ui/SyncReviewModal';
@@ -42,37 +42,38 @@ class AuthInstructionsModal extends Modal {
 }
 
 function createTokenUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
-	new Setting(containerEl)
-		.setName(tr('settings-anilist-token'))
-		.addText((text) => {
-			text.setPlaceholder(tr('settings-anilist-token-placeholder'));
-			text.setValue(plugin.settings.anilistAuth.accessToken);
-			text.inputEl.type = 'password';
-			text.onChange(async (value) => {
-				plugin.settings.anilistAuth.accessToken = value;
-				await plugin.saveSettings();
-				await plugin.updateAnilistProvider();
-			});
-		})
-		.addButton((btn) => {
-			btn.setIcon('info');
-			btn.setTooltip(tr('settings-anilist-auth-instructions'));
-			btn.onClick(() => {
-				new AuthInstructionsModal(plugin.app).open();
-			});
+	const tokenSetting = new Setting(containerEl).setName(tr('settings-anilist-token'));
+
+	// how-to-get-a-token icon sits to the left of the input
+	tokenSetting.addButton((btn) => {
+		btn.setIcon('info');
+		btn.setTooltip(tr('settings-anilist-auth-instructions'));
+		btn.onClick(() => {
+			new AuthInstructionsModal(plugin.app).open();
 		});
+	});
+
+	tokenSetting.addText((text) => {
+		text.setPlaceholder(tr('settings-anilist-token-placeholder'));
+		text.setValue(plugin.settings.anilistAuth.accessToken);
+		text.inputEl.type = 'password';
+		text.onChange(async (value) => {
+			plugin.settings.anilistAuth.accessToken = value;
+			await plugin.saveSettings();
+			await plugin.updateAnilistProvider();
+		});
+	});
+
+	// authorize action sits on the right of the token row
+	tokenSetting.addButton((btn) => {
+		btn.setButtonText(tr('settings-anilist-authorize'));
+		btn.onClick(() => {
+			window.open(getAnilistAuthUrl(CLIENT_ID), '_blank');
+		});
+	});
 }
 
 function createConnectionUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
-	new Setting(containerEl)
-		.setName(tr('settings-anilist-authorize'))
-		.addButton((btn) => {
-			btn.setButtonText(tr('settings-anilist-authorize'));
-			btn.onClick(() => {
-				window.open(getAnilistAuthUrl(CLIENT_ID), '_blank');
-			});
-		});
-
 	const testSetting = new Setting(containerEl)
 		.setName(tr('settings-test-btn'))
 		.setDesc(tr('settings-test-desc'))
@@ -100,17 +101,6 @@ function createConnectionUI(containerEl: HTMLElement, plugin: BabylonPlugin): vo
 }
 
 function createSyncSettings(containerEl: HTMLElement, plugin: BabylonPlugin): void {
-	new Setting(containerEl)
-		.setName(tr('settings-sync-on-startup'))
-		.setDesc(tr('settings-sync-on-startup-desc'))
-		.addToggle((toggle) => {
-			toggle.setValue(plugin.settings.sync.syncOnStartup);
-			toggle.onChange(async (value) => {
-				plugin.settings.sync.syncOnStartup = value;
-				await plugin.saveSettings();
-			});
-		});
-
 	// Sync all button
 	new Setting(containerEl)
 		.setName(tr('sync-all'))
@@ -141,7 +131,20 @@ function createSyncSettings(containerEl: HTMLElement, plugin: BabylonPlugin): vo
 			});
 		});
 
-	// Clear per-note ignores
+	new Setting(containerEl)
+		.setName(tr('settings-sync-on-startup'))
+		.setDesc(tr('settings-sync-on-startup-desc'))
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.sync.syncOnStartup);
+			toggle.onChange(async (value) => {
+				plugin.settings.sync.syncOnStartup = value;
+				await plugin.saveSettings();
+			});
+		});
+}
+
+// Clear per-note ignores — deprecated alongside the legacy template mode
+function createClearIgnoresUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 	new Setting(containerEl)
 		.setName(tr('sync-clear-ignores'))
 		.setDesc(tr('sync-clear-ignores-desc'))
@@ -457,10 +460,14 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 	const personalizationOn = plugin.settings.anilistAuth.personalizationEnabled;
 	const app = plugin.app;
 
-	// Provider
-	new Setting(containerEl)
-		.setName(tr('settings-provider'))
-		.addDropdown((dropdown) => {
+	// Provider — the dropdown lives in the group header
+	createCollapsible(containerEl, {
+		title: tr('settings-provider'),
+		key: 'anime-provider',
+		level: 3,
+		toggleable: false,
+		headerControl: (controls) => {
+			const dropdown = new DropdownComponent(controls);
 			dropdown.addOption('anilist', 'AniList');
 			dropdown.setValue(animeSettings?.provider ?? 'anilist');
 			dropdown.onChange(async (value) => {
@@ -469,7 +476,8 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 					await plugin.saveSettings();
 				}
 			});
-		});
+		},
+	});
 
 	// Personalization — collapsible group whose header carries the enable toggle;
 	// open state follows the toggle (no manual folding)
@@ -535,26 +543,31 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 	});
 	createPresetSection(presets.body, plugin);
 
-	// Output folder
-	if (animeSettings) {
-		const folderSetting = new Setting(containerEl)
-			.setName(tr('settings-folder'))
-			.setDesc(tr('settings-folder-desc'));
+	// the template file only provides the note body when a preset exists
+	presets.body.createEl('p', {
+		text: tr('preset-body-hint'),
+		cls: 'setting-item-description',
+	});
 
-		addFolderPicker(
-			folderSetting,
-			plugin.app,
-			animeSettings.folder,
-			(value) => {
-				animeSettings.folder = value;
-				void plugin.saveSettings();
-			},
-		);
-	}
+	// Output folder — the folder picker lives in the group header, the body
+	// carries the template file override
+	const output = createCollapsible(containerEl, {
+		title: tr('settings-folder'),
+		key: 'anime-output',
+		level: 3,
+		headerControl: (controls) => {
+			addFolderPickerToControl(controls, plugin.app, animeSettings?.folder ?? '', (value) => {
+				if (animeSettings) {
+					animeSettings.folder = value;
+					void plugin.saveSettings();
+				}
+			});
+		},
+	});
 
 	// Template file (auto-updated by Generate, manual override via file picker)
 	if (animeSettings) {
-		const templateSetting = new Setting(containerEl)
+		const templateSetting = new Setting(output.body)
 			.setName(tr('settings-template'))
 			.setDesc(tr('settings-template-desc'));
 
@@ -600,13 +613,7 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 		});
 	}
 
-	// the template file only provides the note body when a preset exists
-	containerEl.createEl('p', {
-		text: tr('preset-body-hint'),
-		cls: 'setting-item-description',
-	});
-
-	// Legacy: template manager + field map (deprecated, hidden by default)
+	// Legacy: template manager + field map + deprecated sync cleanup
 	const legacy = createCollapsible(containerEl, {
 		title: tr('preset-legacy'),
 		desc: tr('preset-legacy-desc'),
@@ -616,4 +623,5 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 	});
 	createLegacyFieldMapUI(legacy.body, plugin);
 	createTemplateManager(legacy.body, plugin);
+	createClearIgnoresUI(legacy.body, plugin);
 }

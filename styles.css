@@ -848,11 +848,11 @@
    These rules only fill the small gaps core CSS does not cover. */
 
 .babylon-collapsible {
-	margin: 2px 0;
-}
-
-.babylon-collapsible + .babylon-collapsible {
-	margin-top: 14px;
+	margin: 10px 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 10px 14px;
+	background: var(--background-primary);
 }
 
 .babylon-collapsible-header {
@@ -901,5 +901,15 @@
 }
 
 .babylon-collapsible-body {
-	padding: 4px 0;
+	padding: 2px 0 8px;
+}
+
+/* folder picker embedded in a group header */
+.babylon-collapsible-header .babylon-folder-input {
+	max-width: 260px;
+}
+
+/* keep the token input usable next to the info icon and authorize button */
+.babylon-collapsible .setting-item-control .text-input {
+	min-width: 220px;
 }
