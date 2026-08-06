@@ -843,13 +843,68 @@
 }
 
 /* ── Settings collapsible sections ───────────────────────────
-   The DOM mirrors Obsidian's native .setting-group structure
-   (heading → .setting-group-search → .setting-items), so the theme's
-   CSS already draws the rounded item frames and the dividers between
-   rows — exactly like Obsidian's own settings. We only add what the
-   theme can't know: folded bodies are hidden, foldable headers are
-   clickable. No custom borders, backgrounds or paddings here. */
+   Scheme: each group is its own rounded box on a background, with
+   "-" = the divider between rows inside it. Container groups that
+   only host other groups ("Media types", "Anime") stay plain so the
+   child groups stack as separate boxes below the heading. */
 
+/* stacked groups/boxes get a small gap between them */
+.babylon-collapsible + .babylon-collapsible {
+	margin-top: var(--size-4-3);
+}
+
+/* container groups (body only nests other groups): no box at all */
+.babylon-collapsible:has(> .setting-items > .babylon-collapsible) {
+	background: transparent;
+	border: none;
+}
+.babylon-collapsible:has(> .setting-items > .babylon-collapsible) > .setting-items {
+	background: transparent;
+	border: none;
+	border-radius: 0;
+	padding: 0;
+}
+
+/* a level-2+ container header gets its own single-row box ("( Anime )") */
+.babylon-collapsible:not(.babylon-collapsible-level-1):has(> .setting-items > .babylon-collapsible) > .babylon-collapsible-header {
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	margin-bottom: var(--size-4-2);
+}
+
+/* level-1 groups that show rows (General, API keys): heading above,
+   the rounded box wraps just the rows */
+.babylon-collapsible-level-1:not(:has(> .setting-items > .babylon-collapsible)) > .setting-items {
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+}
+
+/* level-2+ groups that show rows (Provider, Personalization, Sync,
+   Presets, Output folder, Legacy, each media type): the whole group
+   is one box, title on top, rows below with dividers */
+.babylon-collapsible:not(.babylon-collapsible-level-1):not(:has(> .setting-items > .babylon-collapsible)) {
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	overflow: hidden;
+}
+.babylon-collapsible:not(.babylon-collapsible-level-1):not(:has(> .setting-items > .babylon-collapsible)) > .setting-items {
+	background: transparent;
+	border: none;
+	border-radius: 0;
+}
+.babylon-collapsible:not(.babylon-collapsible-level-1):not(:has(> .setting-items > .babylon-collapsible)) > .babylon-collapsible-header {
+	margin-bottom: 0;
+}
+/* divider under the box title while open — the "-" between the title
+   and the first row from the scheme */
+.babylon-collapsible:not(.babylon-collapsible-level-1):not(:has(> .setting-items > .babylon-collapsible)).is-open > .babylon-collapsible-header {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* folded groups hide their rows */
 .babylon-collapsible:not(.is-open) > .babylon-collapsible-body {
 	display: none;
 }
@@ -873,6 +928,10 @@
 	font-size: 0.85em;
 	line-height: 1.4;
 	color: var(--text-muted);
+}
+
+.babylon-collapsible-level-1 > .babylon-collapsible-header .setting-item-name {
+	font-size: 1.1em;
 }
 
 /* folder picker embedded in a group header */
