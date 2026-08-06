@@ -904,6 +904,13 @@
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
+/* proper vertical padding for headers inside boxes so the title is
+   not glued to the box edges */
+.babylon-collapsible:not(.babylon-collapsible-level-1) > .babylon-collapsible-header {
+	padding-top: var(--size-4-4);
+	padding-bottom: var(--size-4-4);
+}
+
 /* folded groups hide their rows */
 .babylon-collapsible:not(.is-open) > .babylon-collapsible-body {
 	display: none;
