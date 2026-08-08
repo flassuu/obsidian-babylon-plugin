@@ -122,6 +122,24 @@
 	color: var(--text-muted);
 }
 
+/* changelog icon button next to the version label - same hover bubble look
+   as the token help icon (see .babylon-tip-icon): muted icon, accent on
+   hover, tooltip bubble with "View changelog" */
+.babylon-changelog-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: none;
+	background: transparent;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+.babylon-changelog-btn svg {
+	width: 15px;
+	height: 15px;
+}
+
 .babylon-about-author {
 	margin: 0 0 8px;
 	font-size: 0.9em;
@@ -163,6 +181,13 @@
 	width: 16px;
 	height: 16px;
 	flex-shrink: 0;
+}
+
+/* the Discord logo needs a bit more room: the padded viewBox shrinks it, so
+   render it slightly larger than the lucide icons to keep the same visual size */
+.babylon-about-btn svg.babylon-discord-svg {
+	width: 18px;
+	height: 18px;
 }
 
 /* Template Manager */

@@ -261,7 +261,7 @@ export default class BabylonPlugin extends Plugin {
 
 	async startAddFromList(): Promise<void> {
 		if (!this.settings.anilistAuth.accessToken) {
-			new Notice('Anilist token not configured in settings.');
+			new Notice('AniList token not configured in settings.');
 			return;
 		}
 

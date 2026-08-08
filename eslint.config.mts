@@ -29,4 +29,13 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		rules: {
+			// keep canonical casing for brand/handle names ('AniList', 'flassuu')
+			'obsidianmd/ui/sentence-case': [
+				'warn',
+				{ brands: ['AniList', 'flassuu'], enforceCamelCaseLower: true },
+			],
+		},
+	},
 );

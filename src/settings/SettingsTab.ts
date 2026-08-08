@@ -15,17 +15,6 @@ export class BabylonSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	// feeds Obsidian's settings search (1.13+); ignored by older versions
-	getSettingDefinitions(): Array<{ key: string; name: string; desc?: string }> {
-		return [
-			{ key: 'language', name: tr('settings-language'), desc: tr('settings-language-desc') },
-			{ key: 'templateFolder', name: tr('settings-template-folder'), desc: tr('settings-template-folder-desc') },
-			{ key: 'apiKeys.omdb', name: tr('settings-api-key-omdb'), desc: tr('settings-api-key-omdb-desc') },
-			{ key: 'apiKeys.rawg', name: tr('settings-api-key-rawg'), desc: tr('settings-api-key-rawg-desc') },
-			{ key: 'anilistAuth.accessToken', name: tr('settings-anilist-token'), desc: tr('settings-anilist-token-desc') },
-		];
-	}
-
 	display(): void {
 		const { containerEl } = this;
 
@@ -41,10 +30,21 @@ export class BabylonSettingTab extends PluginSettingTab {
 		const titleRow = left.createDiv({ cls: 'babylon-about-title-row' });
 		titleRow.createSpan({ cls: 'babylon-about-name', text: this.plugin.manifest.name });
 		titleRow.createSpan({ cls: 'babylon-about-version', text: tr('settings-about-version', { version: 'v' + this.plugin.manifest.version }) });
+		const changelogBtn = titleRow.createEl('button', {
+			cls: 'babylon-changelog-btn babylon-tip-icon',
+			attr: {
+				'aria-label': tr('settings-about-changelog'),
+				'data-tip': tr('settings-about-changelog'),
+			},
+		});
+		setIcon(changelogBtn, 'scroll-text');
+		changelogBtn.addEventListener('click', () => {
+			window.open(tr('settings-about-changelog-url'), '_blank');
+		});
 
 		const authorP = left.createEl('p', { cls: 'babylon-about-author' });
 		authorP.insertAdjacentText('afterbegin', 'by ');
-		authorP.createEl('a', { href: 'https://github.com/flassuu', text: 'Flassuu' });
+		authorP.createEl('a', { href: 'https://github.com/flassuu', text: 'flassuu' });
 
 		left.createEl('p', {
 			cls: 'babylon-about-desc',
@@ -56,9 +56,10 @@ export class BabylonSettingTab extends PluginSettingTab {
 		function createDiscordIcon(parent: HTMLElement): void {
 			const ns = 'http://www.w3.org/2000/svg';
 			const svg = document.createElementNS(ns, 'svg');
-			svg.setAttribute('viewBox', '0 0 127.14 96.36');
+			svg.setAttribute('viewBox', '-6 -5 139.14 106.36');
 			svg.setAttribute('width', '18');
 			svg.setAttribute('height', '18');
+			svg.setAttribute('class', 'babylon-discord-svg');
 			const path = document.createElementNS(ns, 'path');
 			path.setAttribute('fill', 'none');
 			path.setAttribute('stroke', 'currentColor');
