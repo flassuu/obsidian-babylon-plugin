@@ -54,7 +54,7 @@ function buildValueMap(details: MediaDetails, preset: MediaPreset): Record<strin
 	return map;
 }
 
-// strip a leading YAML frontmatter block from a template body — the preset owns
+// strip a leading YAML frontmatter block from a template body - the preset owns
 // the frontmatter in the hybrid model.
 function stripFrontmatter(template: string): string {
 	const m = template.match(/^---\n[\s\S]*?\n---\n/);

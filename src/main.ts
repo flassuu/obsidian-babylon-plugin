@@ -181,7 +181,7 @@ export default class BabylonPlugin extends Plugin {
 				if (!key) continue;
 
 				// derived fields (title_en/jp/ro/ru, originalTitle) have no
-				// direct GraphQL field — they come from other fields
+				// direct GraphQL field; they come from other fields
 				const def = defs.find((d) => d.key === key);
 				if (def && !def.graphql) continue;
 
@@ -289,7 +289,7 @@ export default class BabylonPlugin extends Plugin {
 			return;
 		}
 		if (!this.settings.anilistAuth.accessToken) {
-			new Notice('AniList token not configured in settings.');
+			new Notice(tr('notice-anilist-token-missing'));
 			return;
 		}
 
@@ -323,7 +323,7 @@ export default class BabylonPlugin extends Plugin {
 		const engine = new SyncEngine(this);
 		const remoteData = await fetchSingleListData(this.app, this.settings.anilistAuth.accessToken, sourceId);
 		if (remoteData.size === 0) {
-			new Notice('No AniList entry found for this note.');
+			new Notice(tr('notice-anilist-entry-not-found'));
 			return;
 		}
 		const result = await engine.syncAll('anime', remoteData);

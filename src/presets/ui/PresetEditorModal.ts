@@ -49,7 +49,7 @@ export class PresetEditorModal extends Modal {
 	private preset: MediaPreset;
 	private originalName: string;
 
-	// transient UI state, keyed by field id — not part of the saved JSON
+	// transient UI state, keyed by field id - not part of the saved JSON
 	private vmaps = new Map<string, MapRow[]>();
 	private numberInputs = new Map<string, { scaleFrom: string; scaleTo: string; round: string }>();
 	private expandedFormat = new Set<string>();

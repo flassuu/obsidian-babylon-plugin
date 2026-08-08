@@ -8,6 +8,7 @@ export function createApiSection(
 ): void {
 	new Setting(containerEl)
 		.setName(tr('settings-api-key-omdb'))
+		.setDesc(tr('settings-api-key-omdb-desc'))
 		.addText((text) =>
 			text
 				.setPlaceholder('https://omdbapi.com')
@@ -20,6 +21,7 @@ export function createApiSection(
 
 	new Setting(containerEl)
 		.setName(tr('settings-api-key-rawg'))
+		.setDesc(tr('settings-api-key-rawg-desc'))
 		.addText((text) =>
 			text
 				.setPlaceholder('https://rawg.io')

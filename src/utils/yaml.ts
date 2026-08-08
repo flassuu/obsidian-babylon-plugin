@@ -31,7 +31,7 @@ export function serializeYamlValue(key: string, val: string | number | boolean |
 		return `${key}: ${val ? 'true' : 'false'}`;
 	}
 
-	// string — quote if it contains yaml-significant characters
+	// string - quote if it contains yaml-significant characters
 	if (needsYamlQuoting(val)) {
 		return `${key}: "${escapeYamlDoubleQuotes(val)}"`;
 	}

@@ -867,27 +867,27 @@
 
 /* a level-2+ container header gets its own single-row box ("( Anime )") */
 .babylon-collapsible:not(.babylon-collapsible-level-1):has(> .setting-items > .babylon-collapsible) > .babylon-collapsible-header {
-	background-color: var(--background-secondary);
+	background-color: var(--background-primary-alt);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-l);
-	margin-bottom: var(--size-4-2);
+	border-radius: 8px;
+	margin-bottom: var(--size-4-3);
 }
 
 /* level-1 groups that show rows (General, API keys): heading above,
    the rounded box wraps just the rows */
 .babylon-collapsible-level-1:not(:has(> .setting-items > .babylon-collapsible)) > .setting-items {
-	background-color: var(--background-secondary);
+	background-color: var(--background-primary-alt);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-l);
+	border-radius: 8px;
 }
 
 /* level-2+ groups that show rows (Provider, Personalization, Sync,
    Presets, Output folder, Legacy, each media type): the whole group
    is one box, title on top, rows below with dividers */
 .babylon-collapsible:not(.babylon-collapsible-level-1):not(:has(> .setting-items > .babylon-collapsible)) {
-	background-color: var(--background-secondary);
+	background-color: var(--background-primary-alt);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-l);
+	border-radius: 8px;
 	overflow: hidden;
 }
 .babylon-collapsible:not(.babylon-collapsible-level-1):not(:has(> .setting-items > .babylon-collapsible)) > .setting-items {
@@ -911,6 +911,12 @@
 	padding-bottom: var(--size-4-4);
 }
 
+/* single-line headers stay the same height whether the control is a small
+   toggle or a full-height dropdown */
+.babylon-collapsible:not(.babylon-collapsible-level-1) > .babylon-collapsible-header .setting-item-control {
+	min-height: var(--input-height);
+}
+
 /* folded groups hide their rows */
 .babylon-collapsible:not(.is-open) > .babylon-collapsible-body {
 	display: none;
@@ -918,6 +924,15 @@
 
 .babylon-collapsible-header {
 	cursor: pointer;
+}
+
+/* align header text with the setting rows below: the native heading rule
+   (.setting-group .setting-item-heading) uses 16px side padding while rows
+   inside boxes use the wider setting-items padding, so headers looked
+   shifted left. This rule is more specific and wins. */
+.babylon-collapsible > .babylon-collapsible-header.setting-item-heading {
+	padding-left: var(--setting-items-padding-x);
+	padding-right: var(--setting-items-padding-x);
 }
 
 .babylon-collapsible-header.mod-static {
@@ -949,4 +964,55 @@
 /* keep the token input usable next to the info icon and authorize button */
 .babylon-collapsible .setting-item-control .text-input {
 	min-width: 220px;
+}
+
+/* help icon right after a setting title: on hover the icon highlights with
+   the selection color and a small overlay bubble appears right under it */
+.babylon-tip-icon {
+	position: relative;
+	display: inline-block;
+	vertical-align: middle;
+	margin-left: var(--size-4-2);
+	color: var(--text-muted);
+	cursor: help;
+}
+.babylon-tip-icon svg {
+	width: 15px;
+	height: 15px;
+}
+.babylon-tip-icon:hover {
+	color: var(--text-accent);
+}
+.babylon-tip-icon::after {
+	content: attr(data-tip);
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 0;
+	width: max-content;
+	max-width: 260px;
+	padding: var(--size-4-2) var(--size-4-3);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	font-weight: 400;
+	line-height: 1.4;
+	white-space: pre-line;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	z-index: 100;
+	transition: opacity 0.12s ease-in-out;
+}
+.babylon-tip-icon:hover::after {
+	opacity: 1;
+	visibility: visible;
+}
+
+/* the setting name clips its content (overflow: hidden), which would cut off
+   the hint bubble under the icon; let that one row overflow instead */
+.setting-item-name:has(.babylon-tip-icon) {
+	overflow: visible;
 }

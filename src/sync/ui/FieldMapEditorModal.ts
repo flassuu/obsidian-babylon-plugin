@@ -263,7 +263,7 @@ export class FieldMapEditorModal extends Modal {
 			this.dirty = true;
 		});
 
-		// move buttons — only for synced, mapped fields
+		// move buttons - only for synced, mapped fields
 		const moveEl = row.createDiv({ cls: 'babylon-field-map-move' });
 		if (field.sync && field.inMap) {
 			const upBtn = moveEl.createEl('button', { cls: 'babylon-field-map-move-btn' });
@@ -281,7 +281,7 @@ export class FieldMapEditorModal extends Modal {
 		if (idx === -1) return;
 		const target = idx + dir;
 		if (target < 0 || target >= this.fields.length) return;
-		// swap — but only within the same category
+		// swap - but only within the same category
 		const neighbor = this.fields[target]!;
 		if (neighbor.category !== field.category) return;
 		[this.fields[idx], this.fields[target]] = [this.fields[target]!, this.fields[idx]!];

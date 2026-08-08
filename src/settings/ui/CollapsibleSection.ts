@@ -1,4 +1,4 @@
-// Obsidian-native settings group built on plain divs — the same structure
+// Obsidian-native settings group built on plain divs - the same structure
 // Obsidian's own settings use (.setting-group / .setting-item-heading /
 // .setting-items). No <details>/<summary>: open state is driven only by a
 // CSS class, so header clicks never fold unless we wire them explicitly.
@@ -29,12 +29,12 @@ export function createCollapsible(
 	container: HTMLElement,
 	config: CollapsibleConfig,
 ): CollapsibleSection {
-	const group = container.createEl('div', {
+	const group = container.createDiv({
 		cls: `setting-group babylon-collapsible babylon-collapsible-level-${config.level ?? 1}`,
 	});
 	if (config.key) group.dataset.collapseKey = config.key;
 
-	const header = group.createEl('div', {
+	const header = group.createDiv({
 		cls: 'setting-item setting-item-heading babylon-collapsible-header'
 			+ (config.toggleable === false ? ' mod-static' : ''),
 	});
@@ -54,8 +54,8 @@ export function createCollapsible(
 		controls.addEventListener('click', (e) => e.stopPropagation());
 	}
 
-	// empty search slot — present in native Obsidian groups too
-	group.createEl('div', { cls: 'setting-group-search', attr: { tabindex: '-1' } });
+	// empty search slot - present in native Obsidian groups too
+	group.createDiv({ cls: 'setting-group-search', attr: { tabindex: '-1' } });
 
 	const body = group.createDiv({ cls: 'setting-items babylon-collapsible-body' });
 

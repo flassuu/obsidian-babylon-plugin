@@ -1,4 +1,4 @@
-import { App, DropdownComponent, FuzzySuggestModal, Modal, Notice, Setting } from 'obsidian';
+import { App, DropdownComponent, FuzzySuggestModal, Notice, Setting, setIcon } from 'obsidian';
 import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import { getAnilistAuthUrl, testAnilistToken } from '../../utils/fetcher';
@@ -25,33 +25,29 @@ import { PresetEditorModal } from '../../presets/ui/PresetEditorModal';
 
 const CLIENT_ID = '45744';
 
-class AuthInstructionsModal extends Modal {
-	onOpen(): void {
-		const { contentEl } = this;
-		contentEl.createEl('h2', { text: tr('settings-anilist-auth') });
-		contentEl.createEl('p', { text: tr('settings-anilist-auth-desc') });
-		const ol = contentEl.createEl('ol');
-		ol.createEl('li', { text: tr('settings-anilist-step-click') });
-		ol.createEl('li', { text: tr('settings-anilist-step-approve') });
-		ol.createEl('li', { text: tr('settings-anilist-step-copy') });
-	}
-
-	onClose(): void {
-		this.contentEl.empty();
-	}
+// the guide text shown in the token hint bubble, same as the old
+// step-by-step instructions window used to show
+function getTokenGuideText(): string {
+	return [
+		`1. ${tr('settings-anilist-step-click')}`,
+		`2. ${tr('settings-anilist-step-approve')}`,
+		`3. ${tr('settings-anilist-step-copy')}`,
+	].join('\n');
 }
 
 function createTokenUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
-	const tokenSetting = new Setting(containerEl).setName(tr('settings-anilist-token'));
+	const tokenSetting = new Setting(containerEl)
+		.setName(tr('settings-anilist-token'))
+		.setDesc(tr('settings-anilist-token-desc'));
 
-	// how-to-get-a-token icon sits to the left of the input
-	tokenSetting.addButton((btn) => {
-		btn.setIcon('info');
-		btn.setTooltip(tr('settings-anilist-auth-instructions'));
-		btn.onClick(() => {
-			new AuthInstructionsModal(plugin.app).open();
-		});
+	// the help icon is a small symbol right after the title, not a separate
+	// button: hovering highlights it and an overlay bubble with the full
+	// step-by-step guide appears right under it
+	const tip = tokenSetting.nameEl.createSpan({
+		cls: 'babylon-tip-icon',
+		attr: { 'data-tip': getTokenGuideText() },
 	});
+	setIcon(tip, 'info');
 
 	tokenSetting.addText((text) => {
 		text.setPlaceholder(tr('settings-anilist-token-placeholder'));
@@ -89,12 +85,13 @@ function createConnectionUI(containerEl: HTMLElement, plugin: BabylonPlugin): vo
 				const result = await testAnilistToken(token);
 				if (result.success) {
 					const parts: string[] = [];
-					if (result.totalAnime !== undefined) parts.push(`Total: ${result.totalAnime}`);
-					if (result.episodesWatched !== undefined) parts.push(`Episodes: ${result.episodesWatched}`);
-					if (result.meanScore !== undefined) parts.push(`Score: ${result.meanScore}`);
-					testSetting.setDesc(`${result.username}\n${parts.join('  |  ')}`);
+					parts.push(`${tr('settings-test-username')}: ${result.username ?? '?'}`);
+					if (result.totalAnime !== undefined) parts.push(`${tr('settings-test-total')}: ${result.totalAnime}`);
+					if (result.episodesWatched !== undefined) parts.push(`${tr('settings-test-episodes')}: ${result.episodesWatched}`);
+					if (result.meanScore !== undefined) parts.push(`${tr('settings-test-score')}: ${result.meanScore}`);
+					testSetting.setDesc(parts.join(' | '));
 				} else {
-					testSetting.setDesc('\u2717 ' + (result.error ?? 'Unknown error'));
+					testSetting.setDesc('\u2717 ' + (result.error ?? tr('settings-test-unknown-error')));
 				}
 			});
 		});
@@ -111,7 +108,7 @@ function createSyncSettings(containerEl: HTMLElement, plugin: BabylonPlugin): vo
 			btn.onClick(async () => {
 				const token = plugin.settings.anilistAuth.accessToken.trim();
 				if (!token) {
-					new Notice('AniList token required for sync');
+					new Notice(tr('notice-anilist-token-required'));
 					return;
 				}
 				new Notice(tr('sync-in-progress'));
@@ -143,7 +140,7 @@ function createSyncSettings(containerEl: HTMLElement, plugin: BabylonPlugin): vo
 		});
 }
 
-// Clear per-note ignores — deprecated alongside the legacy template mode
+// Clear per-note ignores - deprecated alongside the legacy template mode
 function createClearIgnoresUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 	new Setting(containerEl)
 		.setName(tr('sync-clear-ignores'))
@@ -352,7 +349,7 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 	});
 	wikiA.addClass('babylon-tmpl-wiki');
 
-	// tags container — we keep a reference for incremental updates
+	// tags container - we keep a reference for incremental updates
 	const tagContainer = body.createDiv({ cls: 'babylon-custom-tags' });
 	const s0 = animeSettings;
 	renderTags();
@@ -460,15 +457,16 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 	const personalizationOn = plugin.settings.anilistAuth.personalizationEnabled;
 	const app = plugin.app;
 
-	// Provider — the dropdown lives in the group header
+	// Provider - the dropdown lives in the group header
 	createCollapsible(containerEl, {
 		title: tr('settings-provider'),
+		desc: tr('settings-provider-desc'),
 		key: 'anime-provider',
 		level: 3,
 		toggleable: false,
 		headerControl: (controls) => {
 			const dropdown = new DropdownComponent(controls);
-			dropdown.addOption('anilist', 'AniList');
+			dropdown.addOption('anilist', tr('provider-anilist'));
 			dropdown.setValue(animeSettings?.provider ?? 'anilist');
 			dropdown.onChange(async (value) => {
 				if (animeSettings) {
@@ -479,7 +477,7 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 		},
 	});
 
-	// Personalization — collapsible group whose header carries the enable toggle;
+	// Personalization - collapsible group whose header carries the enable toggle;
 	// open state follows the toggle (no manual folding)
 	const personalization = createCollapsible(containerEl, {
 		title: tr('settings-anilist-personalization'),
@@ -507,7 +505,7 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 	}
 	renderPersonalizationBody();
 
-	// Enable sync — collapsible group whose header carries the enable toggle;
+	// Enable sync - collapsible group whose header carries the enable toggle;
 	// sub-parameters expand when sync is on and close when it is off
 	const sync = createCollapsible(containerEl, {
 		title: tr('settings-sync-enabled'),
@@ -533,7 +531,7 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 	}
 	renderSyncBody();
 
-	// Presets — the visual note builder
+	// Presets - the visual note builder
 	const presets = createCollapsible(containerEl, {
 		title: tr('preset-section'),
 		desc: tr('preset-section-desc'),
@@ -549,7 +547,7 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 		cls: 'setting-item-description',
 	});
 
-	// Output folder — the folder picker lives in the group header, the body
+	// Output folder - the folder picker lives in the group header, the body
 	// carries the template file override
 	const output = createCollapsible(containerEl, {
 		title: tr('settings-folder'),

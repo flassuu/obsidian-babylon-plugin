@@ -158,10 +158,10 @@ export class SyncReviewModal extends Modal {
 			}
 		});
 
-		// field info — show the frontmatter property name as the label
+		// field info - show the frontmatter property name as the label
 		const label = change.propertyName;
-		const localStr = change.localValue ?? '—';
-		const remoteStr = change.remoteValue ?? '—';
+		const localStr = change.localValue ?? '-';
+		const remoteStr = change.remoteValue ?? '-';
 		row.createSpan({
 			text: `${label}: ${localStr} → ${remoteStr}`,
 			cls: 'babylon-sync-field-label',

@@ -47,7 +47,7 @@ export function buildFrontmatter(details: MediaDetails, preset: MediaPreset): st
 		}
 
 		if (f.type === 'object') {
-			// complex objects are not serialized in v1 — skip them
+			// complex objects are not serialized in v1 - skip them
 			continue;
 		}
 

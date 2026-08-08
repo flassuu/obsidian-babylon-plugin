@@ -8,7 +8,7 @@ export function getAnilistAuthUrl(clientId: string): string {
 	return `${ANILIST_AUTH_URL}?client_id=${clientId}&response_type=token`;
 }
 
-// generic json fetcher used by providers — wraps obsidian's requestUrl
+// generic json fetcher used by providers - wraps obsidian's requestUrl
 export async function fetchJson(
 	url: string,
 	method: 'GET' | 'POST',
@@ -28,7 +28,7 @@ export async function fetchJson(
 	return json;
 }
 
-// raw anilist graphql client — handles both http errors and graphql-level errors
+// raw anilist graphql client - handles both http errors and graphql-level errors
 async function requestRaw(query: string, variables: Record<string, unknown>, token?: string): Promise<Record<string, unknown>> {
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 	if (token) headers['Authorization'] = `Bearer ${token}`;

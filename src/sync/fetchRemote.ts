@@ -48,7 +48,7 @@ function flattenEntry(entry: Record<string, unknown>): Record<string, string | n
 	const ca = entry['completedAt'] as Record<string, number> | undefined;
 	if (ca?.year) values['completedAt'] = `${ca.year}-${String(ca.month).padStart(2, '0')}-${String(ca.day).padStart(2, '0')}`;
 
-	// flatten advancedScores — each sub-score normalized to camelCase
+	// flatten advancedScores - each sub-score normalized to camelCase
 	const adv = entry['advancedScores'];
 	if (adv !== null && adv !== undefined && typeof adv === 'object') {
 		for (const [advKey, advVal] of Object.entries(adv as Record<string, number>)) {

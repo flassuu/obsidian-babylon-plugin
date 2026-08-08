@@ -15,6 +15,17 @@ export class BabylonSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	// feeds Obsidian's settings search (1.13+); ignored by older versions
+	getSettingDefinitions(): Array<{ key: string; name: string; desc?: string }> {
+		return [
+			{ key: 'language', name: tr('settings-language'), desc: tr('settings-language-desc') },
+			{ key: 'templateFolder', name: tr('settings-template-folder'), desc: tr('settings-template-folder-desc') },
+			{ key: 'apiKeys.omdb', name: tr('settings-api-key-omdb'), desc: tr('settings-api-key-omdb-desc') },
+			{ key: 'apiKeys.rawg', name: tr('settings-api-key-rawg'), desc: tr('settings-api-key-rawg-desc') },
+			{ key: 'anilistAuth.accessToken', name: tr('settings-anilist-token'), desc: tr('settings-anilist-token-desc') },
+		];
+	}
+
 	display(): void {
 		const { containerEl } = this;
 
@@ -29,11 +40,11 @@ export class BabylonSettingTab extends PluginSettingTab {
 
 		const titleRow = left.createDiv({ cls: 'babylon-about-title-row' });
 		titleRow.createSpan({ cls: 'babylon-about-name', text: this.plugin.manifest.name });
-		titleRow.createSpan({ cls: 'babylon-about-version', text: 'v' + this.plugin.manifest.version });
+		titleRow.createSpan({ cls: 'babylon-about-version', text: tr('settings-about-version', { version: 'v' + this.plugin.manifest.version }) });
 
 		const authorP = left.createEl('p', { cls: 'babylon-about-author' });
 		authorP.insertAdjacentText('afterbegin', 'by ');
-		authorP.createEl('a', { href: 'https://github.com/flassuu', text: 'flassuu' });
+		authorP.createEl('a', { href: 'https://github.com/flassuu', text: 'Flassuu' });
 
 		left.createEl('p', {
 			cls: 'babylon-about-desc',

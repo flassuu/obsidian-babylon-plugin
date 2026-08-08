@@ -230,7 +230,7 @@ export class SyncEngine {
 	}
 
 	// expand the whole advancedScores object into individual sub-field changes
-	// (legacy field-map mode — presets model sub-fields as individual entries)
+	// (legacy field-map mode - presets model sub-fields as individual entries)
 	private collectAdvancedScoreChanges(
 		changes: SyncFieldChange[],
 		fm: Record<string, unknown>,

@@ -78,7 +78,7 @@ export class AnilistProvider implements ContentProvider {
 	}
 
 	// build a list of graphql fragments for all requested non-personal fields
-	// personal fields are excluded — they live inside mediaListEntry {}
+	// personal fields are excluded - they live inside mediaListEntry {}
 	private getSelectedGraphQLFragments(): string[] {
 		const allDefs = getFields('anime');
 		const fragments: string[] = [];
@@ -97,7 +97,7 @@ export class AnilistProvider implements ContentProvider {
 				fragments.push(def.graphql);
 				handled.add(def.graphql);
 			} else if (!def) {
-				// custom field name — use as-is (simple) or with sub-selection (composite)
+				// custom field name - use as-is (simple) or with sub-selection (composite)
 				const simple = key.replace(/[^a-zA-Z0-9_]/g, '');
 				if (!simple || handled.has(simple) || alwaysFields.has(simple)) continue;
 
@@ -159,11 +159,11 @@ export class AnilistProvider implements ContentProvider {
 			}
 		}
 
-		// field not found in requestedFields — maybe it's in ALWAYS_DETAIL_GRAPHQL, skip silently
+		// field not found in requestedFields - maybe it's in ALWAYS_DETAIL_GRAPHQL, skip silently
 		return true;
 	}
 
-	// search anilist by title — returns minimal data for the suggestion list
+	// search anilist by title - returns minimal data for the suggestion list
 	async search(query: string): Promise<SearchResult[]> {
 		const q = `${SEARCH_QUERY_HEAD}${SEARCH_GRAPHQL}
     }
@@ -190,7 +190,7 @@ export class AnilistProvider implements ContentProvider {
 		}));
 	}
 
-	// fetch full detail for a single anime — retries up to 3 times, skipping bad fields
+	// fetch full detail for a single anime - retries up to 3 times, skipping bad fields
 	async fetchDetails(sourceId: string, raw?: unknown): Promise<MediaDetails | null> {
 		const id = raw
 			? (raw as Record<string, unknown>)['id'] as number

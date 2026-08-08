@@ -10,6 +10,7 @@ export function createGeneralSection(
 ): void {
 	new Setting(containerEl)
 		.setName(tr('settings-language'))
+		.setDesc(tr('settings-language-desc'))
 		.addDropdown((dropdown) => {
 			dropdown
 				.addOption('en', 'English')
