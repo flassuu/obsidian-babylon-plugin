@@ -10,7 +10,7 @@
 - **References (for patterns):** `../references/` folder (lorebase, library, anilist-sync plugins).
 - **Specification:** `docs/SPECIFICATION.md`
 - **Roadmap:** `docs/ROADMAP.md`
-- **Bug log (read before coding, append after fixing):** `.opencode/BUGLOG.md`
+- **Bug log (read before coding, append after fixing):** `docs/BUGLOG.md`
 
 ## Agent behavior rules
 
@@ -26,13 +26,25 @@
 9. **Async/await** over promise chains; handle errors gracefully.
 10. **Idempotent code** — reload/unload should not leak listeners. Use `this.register*` helpers.
 11. **Lucide icons only** — use `setIcon()` from 'obsidian' for all icons. Never use emoji or raw SVG in UI (Discord button is the one exception — outline SVG required).
-12. **Always read `.opencode/BUGLOG.md` before coding** — keep known bugs, their root causes, and solutions fresh; append new fixed bugs with the same symptom/root-cause/solution structure.
+12. **Always read `docs/BUGLOG.md` before coding** — keep known bugs, their root causes, and solutions fresh. After fixing a complex bug, **ask the user whether to record it in the bug log** (why it happened and how it was solved); only append an entry with their consent. Each entry uses a clear structure:
+
+    ```
+    # Название бага
+    ## Проблема
+    <symptom, what the user sees>
+    ## Причина
+    <root cause, why it happened>
+    ## Решение
+    <how it was fixed, what changed>
+    ```
+
+    Keep entries concise; drop the entry if the user declines.
 
 ## Before coding any feature
 
 1. Read `docs/SPECIFICATION.md` — architecture decisions, types, data flow.
 2. Check `docs/ROADMAP.md` — current stage and planned tasks.
-3. Read `.opencode/BUGLOG.md` — known bugs and past mistakes to avoid repeating.
+3. Read `docs/BUGLOG.md` — known bugs and past mistakes to avoid repeating.
 4. **Look in `../references/`** for implementation patterns (see cheatsheet below).
 5. Read relevant source files to understand existing conventions.
 
