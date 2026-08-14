@@ -30,12 +30,9 @@ export class BabylonSettingTab extends PluginSettingTab {
 		const titleRow = left.createDiv({ cls: 'babylon-about-title-row' });
 		titleRow.createSpan({ cls: 'babylon-about-name', text: this.plugin.manifest.name });
 		titleRow.createSpan({ cls: 'babylon-about-version', text: tr('settings-about-version', { version: 'v' + this.plugin.manifest.version }) });
-		const changelogBtn = titleRow.createEl('button', {
-			cls: 'babylon-changelog-btn babylon-tip-icon',
-			attr: {
-				'aria-label': tr('settings-about-changelog'),
-				'data-tip': tr('settings-about-changelog'),
-			},
+		const changelogBtn = titleRow.createSpan({
+			cls: 'babylon-changelog-btn',
+			attr: { 'aria-label': tr('settings-about-changelog') },
 		});
 		setIcon(changelogBtn, 'scroll-text');
 		changelogBtn.addEventListener('click', () => {

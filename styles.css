@@ -122,18 +122,21 @@
 	color: var(--text-muted);
 }
 
-/* changelog icon button next to the version label - same hover bubble look
-   as the token help icon (see .babylon-tip-icon): muted icon, accent on
-   hover, tooltip bubble with "View changelog" */
+/* changelog icon next to the version label - a plain icon span styled like
+   the token help icon (muted color, accent on hover, same 15px size). Uses
+   Obsidian's native tooltip (aria-label) instead of a custom bubble; the
+   cursor stays unchanged on hover. */
 .babylon-changelog-btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0;
-	border: none;
-	background: transparent;
+	display: inline-block;
+	vertical-align: middle;
+	margin-left: var(--size-4-2);
+	color: var(--text-muted);
 	flex-shrink: 0;
-	cursor: pointer;
+	align-self: center;
+	cursor: default;
+}
+.babylon-changelog-btn:hover {
+	color: var(--text-accent);
 }
 .babylon-changelog-btn svg {
 	width: 15px;
