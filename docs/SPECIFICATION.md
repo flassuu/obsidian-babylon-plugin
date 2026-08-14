@@ -1,4 +1,4 @@
-# Babylon Plugin — Technical Specification
+# Babylon — Technical Specification
 
 > **Version:** 0.5.0 (Planned: Preset System — Visual Note Builder)
 > **Last updated:** 2026-08-04

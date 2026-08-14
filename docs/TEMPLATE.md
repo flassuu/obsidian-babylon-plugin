@@ -1,4 +1,4 @@
-# Babylon Template System
+# Babylon — Template System
 
 Templates are `.md` files with placeholders that get replaced with actual data from the API when creating notes.
 

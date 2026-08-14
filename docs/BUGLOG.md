@@ -1,4 +1,4 @@
-# Bug Log
+# Babylon — Bug Log
 
 ## [fixed] Placeholders not replaced due to a single invalid GraphQL field
 

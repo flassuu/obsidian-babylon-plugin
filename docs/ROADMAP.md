@@ -1,4 +1,4 @@
-# Babylon Plugin — Roadmap
+# Babylon — Roadmap
 
 > **Name:** Babylon (Obsidian Babylon Plugin)
 > **ID:** `babylon`
@@ -361,10 +361,13 @@ obsidian-babylon-plugin/
 ├── manifest.json
 ├── styles.css
 ├── README.md
-├── ROADMAP.md
-├── SPECIFICATION.md
-├── TEMPLATE.md
-└── AGENTS.md
+├── AGENTS.md
+└── docs/
+    ├── ROADMAP.md
+    ├── SPECIFICATION.md
+    ├── TEMPLATE.md
+    ├── BUGLOG.md
+    └── api/anilist.md
 ```
 
 ---
