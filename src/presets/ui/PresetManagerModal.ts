@@ -209,6 +209,9 @@ export class PresetManagerModal extends Modal {
 	private mediaType: MediaType;
 	private collection: PresetCollection | null = null;
 	private edit: EditState | null = null;
+	private backEl: HTMLElement | null = null;
+	private dragFieldId: string | null = null;
+	private dragoverFieldId: string | null = null;
 
 	constructor(plugin: BabylonPlugin, mediaType: MediaType = 'anime') {
 		super(plugin.app);
@@ -227,8 +230,22 @@ export class PresetManagerModal extends Modal {
 	}
 
 	async onOpen(): Promise<void> {
+		this.ensureBackEl();
 		this.collection = await loadPresets(this.plugin.app, this.presetPath());
 		this.renderList();
+	}
+
+	// the back arrow sits at the top-left of the modal, mirrored from the close (✕) button
+	private ensureBackEl(): void {
+		if (this.backEl) return;
+		const btn = this.modalEl.createEl('button', {
+			cls: 'babylon-preset-back-button',
+			attr: { 'aria-label': tr('preset-back') },
+		});
+		btn.setAttribute('title', tr('preset-back'));
+		setIcon(btn, 'arrow-left');
+		btn.addEventListener('click', () => this.renderList());
+		this.backEl = btn;
 	}
 
 	private async persist(collection: PresetCollection): Promise<void> {
@@ -242,28 +259,34 @@ export class PresetManagerModal extends Modal {
 	private renderList(): void {
 		this.edit = null;
 		this.contentEl.empty();
+		if (this.backEl) this.backEl.addClass('hidden');
 
 		const wrapper = this.contentEl.createDiv({ cls: 'babylon-preset-manager' });
-
-		const header = wrapper.createDiv({ cls: 'babylon-preset-manager-header' });
-		header.createDiv({ cls: 'babylon-preset-manager-title', text: tr('preset-manager-title') });
-		header.createDiv({ cls: 'babylon-preset-manager-sub', text: tr('preset-manager-desc') });
 
 		new Setting(wrapper)
 			.setName(tr('preset-create'))
 			.setDesc(tr('preset-create-desc'))
 			.addButton((btn) => {
-				btn.setButtonText(`${tr('preset-create')} …`);
+				btn.setButtonText(tr('preset-create'));
 				btn.setCta();
 				btn.onClick(() => this.startCreate());
 			});
 
 		const list = wrapper.createDiv({ cls: 'babylon-preset-settings-list' });
+
+		// table header
+		const th = list.createDiv({ cls: 'babylon-preset-table-th' });
+		const thDefault = th.createSpan({ cls: 'babylon-preset-table-th-default', text: tr('preset-column-default') });
+		thDefault.setAttribute('title', tr('preset-set-default'));
+		const thName = th.createSpan({ cls: 'babylon-preset-table-th-name', text: tr('preset-column-name') });
+		thName.setAttribute('title', tr('preset-name'));
+		th.createSpan({ cls: 'babylon-preset-table-th-actions', text: '' });
+
 		const presets = this.collection?.presets ?? [];
 		if (presets.length === 0) {
 			list.createDiv({ cls: 'babylon-preset-empty', text: tr('preset-none-found') });
 		}
-		for (const preset of [...presets].sort((a, b) => Number(a.isDefault) - Number(b.isDefault))) {
+		for (const preset of presets) {
 			this.renderListRow(list, preset);
 		}
 	}
@@ -381,30 +404,28 @@ export class PresetManagerModal extends Modal {
 			return;
 		}
 		this.contentEl.empty();
+		if (this.backEl) this.backEl.removeClass('hidden');
 
 		const wrapper = this.contentEl.createDiv({ cls: 'babylon-preset-manager' });
 		const editor = wrapper.createDiv({ cls: 'babylon-preset-editor' });
 
-		new Setting(editor).addButton((b) =>
-			b.setIcon('arrow-left').setTooltip(tr('preset-back')).onClick(() => this.renderList()),
-		);
-
 		// name
 		const nameSetting = new Setting(editor).setName(tr('preset-name')).setDesc('');
-		const nameErrorEl = nameSetting.descEl.createDiv({ cls: 'babylon-preset-name-error hidden' });
+		nameSetting.descEl.createDiv({ cls: 'babylon-preset-name-error hidden' });
+		let nameInput: HTMLInputElement | null = null;
 		nameSetting.addText((text) => {
 			text.setValue(state.preset.name);
 			text.setPlaceholder(tr('preset-name-placeholder'));
 			text.inputEl.addClass('babylon-preset-name-input');
+			nameInput = text.inputEl;
 			text.onChange((v) => {
 				state.preset.name = v.trim();
-				this.updateNameError(text.inputEl, nameErrorEl);
 			});
 		});
-		this.updateNameError(
-			nameSetting.controlEl.querySelector('.babylon-preset-name-input'),
-			nameErrorEl,
-		);
+		if (state.isNew) {
+			// focus right away so the user can start typing the name
+			window.setTimeout(() => nameInput?.focus(), 50);
+		}
 
 		// per-preset template file + quick create button
 		const templateSetting = new Setting(editor)
@@ -415,8 +436,8 @@ export class PresetManagerModal extends Modal {
 		});
 		templateSetting.addExtraButton((b) => {
 			b.setIcon('file-plus')
-				.setTooltip(tr('preset-template-create-note'))
-				.onClick(() => void this.createDraftNote());
+				.setTooltip(tr('preset-template-create'))
+				.onClick(() => void this.createTemplateFile());
 		});
 
 		// fields
@@ -472,28 +493,25 @@ export class PresetManagerModal extends Modal {
 		preserveReRenderState(box, render, '.babylon-preset-list');
 	}
 
-	private updateNameError(
-		input: HTMLElement | null,
-		errorEl: HTMLElement,
-	): void {
-		const state = this.edit;
-		if (!state || !input) return;
-		const name = state.preset.name;
-		const empty = name.length === 0;
-		const dup = this.isDuplicateName(name);
-		if (empty) {
-			input.classList.add('babylon-preset-name-error-input');
-			errorEl.setText(tr('preset-name-required'));
-			errorEl.classList.remove('hidden');
-		} else if (dup) {
-			input.classList.add('babylon-preset-name-error-input');
-			errorEl.setText(tr('preset-name-clash'));
-			errorEl.classList.remove('hidden');
-		} else {
-			input.classList.remove('babylon-preset-name-error-input');
-			errorEl.setText('');
-			errorEl.classList.add('hidden');
-		}
+	// reveal a name error under the input with a smooth fade-in (used on save)
+	private showNameError(msg: string): void {
+		const el = this.contentEl.querySelector('.babylon-preset-name-error');
+		if (!(el instanceof HTMLElement)) return;
+		el.textContent = msg;
+		el.classList.remove('hidden');
+		// restart the fade-in animation on every show
+		el.classList.remove('babylon-animate-in');
+		void el.offsetWidth;
+		el.classList.add('babylon-animate-in');
+		const input = this.contentEl.querySelector('.babylon-preset-name-input');
+		if (input instanceof HTMLElement) input.focus();
+	}
+
+	private clearNameError(): void {
+		const el = this.contentEl.querySelector('.babylon-preset-name-error');
+		if (!el) return;
+		el.textContent = '';
+		el.classList.add('hidden');
 	}
 
 	private isDuplicateName(name: string): boolean {
@@ -571,11 +589,22 @@ export class PresetManagerModal extends Modal {
 	private async saveEdit(): Promise<void> {
 		const state = this.edit;
 		if (!state) return;
+
+		if (!state.preset.name.trim()) {
+			this.showNameError(tr('preset-name-required'));
+			return;
+		}
+		if (this.isDuplicateName(state.preset.name)) {
+			this.showNameError(tr('preset-name-clash'));
+			return;
+		}
+
 		const err = this.validate(state);
 		if (err) {
 			new Notice(err);
 			return;
 		}
+		this.clearNameError();
 
 		this.normalize(state.preset);
 
@@ -683,34 +712,75 @@ export class PresetManagerModal extends Modal {
 		if (box) this.renderFields(box as HTMLElement, state);
 	}
 
-	private moveField(id: string, dir: -1 | 1): void {
+	private moveFieldTo(dragId: string, targetId: string): void {
 		const state = this.edit;
 		if (!state) return;
+		if (dragId === targetId) return;
 		const fields = [...state.preset.fields].sort((a, b) => a.order - b.order);
-		const idx = fields.findIndex((f) => f.id === id);
-		if (idx === -1) return;
-		const target = idx + dir;
-		if (target < 0 || target >= fields.length) return;
-		[fields[idx], fields[target]] = [fields[target]!, fields[idx]!];
+		const from = fields.findIndex((f) => f.id === dragId);
+		const to = fields.findIndex((f) => f.id === targetId);
+		if (from === -1 || to === -1) return;
+		const [moved] = fields.splice(from, 1);
+		fields.splice(to, 0, moved!);
 		fields.forEach((f, i) => {
 			f.order = i;
 		});
+		this.reRenderFields();
+	}
+
+	private reRenderFields(): void {
 		const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
-		if (box) this.renderFields(box as HTMLElement, state);
+		const state = this.edit;
+		if (!box || !state) return;
+		this.renderFields(box as HTMLElement, state);
 	}
 
 	private renderFieldRow(container: HTMLElement, state: EditState, field: PresetField): void {
-		const row = container.createDiv({ cls: 'babylon-preset-row' });
+		const row = container.createDiv({ cls: 'babylon-preset-row babylon-preset-draggable' });
 
+		// drag handle: reorder the field by dragging
 		const move = row.createDiv({ cls: 'babylon-preset-move' });
-		const upBtn = move.createEl('button', { cls: 'babylon-preset-move-btn' });
-		setIcon(upBtn, 'chevron-up');
-		upBtn.setAttribute('aria-label', tr('preset-move-up'));
-		upBtn.addEventListener('click', () => this.moveField(field.id, -1));
-		const downBtn = move.createEl('button', { cls: 'babylon-preset-move-btn' });
-		setIcon(downBtn, 'chevron-down');
-		downBtn.setAttribute('aria-label', tr('preset-move-down'));
-		downBtn.addEventListener('click', () => this.moveField(field.id, 1));
+		const handle = move.createEl('button', { cls: 'babylon-preset-drag-handle' });
+		setIcon(handle, 'grip-vertical');
+		handle.setAttribute('aria-label', tr('preset-drag-handle'));
+		handle.setAttribute('title', tr('preset-drag-handle'));
+		handle.addEventListener('mousedown', () => {
+			row.draggable = true;
+		});
+		handle.addEventListener('mouseup', () => {
+			row.draggable = false;
+		});
+
+		row.addEventListener('dragstart', (e) => {
+			if (!row.draggable) e.preventDefault();
+			this.dragFieldId = field.id;
+			row.addClass('babylon-preset-row-dragging');
+			e.dataTransfer?.setData('text/plain', field.id);
+			e.dataTransfer!.effectAllowed = 'move';
+		});
+		row.addEventListener('dragend', () => {
+			this.dragFieldId = null;
+			this.dragoverFieldId = null;
+			row.draggable = false;
+			row.removeClass('babylon-preset-row-dragging');
+			container.querySelectorAll('.babylon-preset-row-drag-over').forEach((el) =>
+				el.removeClass('babylon-preset-row-drag-over'),
+			);
+		});
+		row.addEventListener('dragover', (e) => {
+			if (!this.dragFieldId || this.dragFieldId === field.id) return;
+			e.preventDefault();
+			const list = container.querySelectorAll('.babylon-preset-row');
+			list.forEach((el) => el.removeClass('babylon-preset-row-drag-over'));
+			row.addClass('babylon-preset-row-drag-over');
+			this.dragoverFieldId = field.id;
+		});
+		row.addEventListener('drop', (e) => {
+			e.preventDefault();
+			if (!this.dragFieldId || !this.dragoverFieldId || this.dragFieldId === this.dragoverFieldId) return;
+			this.moveFieldTo(this.dragFieldId, this.dragoverFieldId);
+			row.draggable = false;
+		});
 
 		const prop = row.createEl('input', {
 			cls: 'babylon-preset-property',
@@ -735,7 +805,6 @@ export class PresetManagerModal extends Modal {
 		const pickBtn = apiBox.createEl('button', { cls: 'babylon-preset-pick' });
 		setIcon(pickBtn, 'search');
 		pickBtn.setAttribute('aria-label', tr('preset-pick-field'));
-		pickBtn.setAttribute('title', tr('preset-pick-field'));
 		pickBtn.addEventListener('click', () => {
 			const items = getFields(this.mediaType).map((f) => f.key);
 			items.push('advancedScores');
@@ -762,9 +831,9 @@ export class PresetManagerModal extends Modal {
 		syncLabel.createSpan({ text: tr('preset-sync') });
 		const sync = syncLabel.createEl('input', { attr: { type: 'checkbox' } });
 		sync.checked = field.sync;
-		sync.disabled = !this.personalOn;
+		sync.disabled = !this.personalOn || !this.plugin.settings.sync.enabled;
 		syncLabel.setAttribute('title', tr('preset-sync-desc'));
-		if (!this.personalOn) syncLabel.addClass('babylon-preset-sync-disabled');
+		if (!this.personalOn || !this.plugin.settings.sync.enabled) syncLabel.addClass('babylon-preset-sync-disabled');
 		sync.addEventListener('change', () => {
 			field.sync = sync.checked;
 			const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
@@ -896,34 +965,87 @@ export class PresetManagerModal extends Modal {
 		});
 	}
 
-	// quick create a draft note from this preset's template and open it
-	private async createDraftNote(): Promise<void> {
+	// create (or overwrite) the preset's .md template in the templates folder
+	private async createTemplateFile(): Promise<void> {
 		const state = this.edit;
 		if (!state) return;
-		const tpl = state.preset.template;
-		if (!tpl) {
-			new Notice(tr('preset-template-required'));
+
+		const folder = (this.plugin.settings.templateFolder || '').replace(/^\/+|\/+$/g, '');
+		if (!folder) {
+			new Notice(tr('preset-template-folder-required'));
 			return;
 		}
-		const tfile = this.app.vault.getAbstractFileByPath(tpl);
-		if (!(tfile instanceof TFile)) {
-			new Notice(tr('preset-template-missing'));
+		if (!state.preset.name.trim()) {
+			new Notice(tr('preset-template-name-required'));
 			return;
 		}
-		const content = await this.app.vault.read(tfile);
-		const dir = tfile.parent?.path ?? '';
-		const strip = tfile.basename.replace(/[\\/:*?"<>|]/g, '-');
-		const baseName = `${strip} - draft`;
-		let fileName = `${baseName}.md`;
-		if (this.app.vault.getAbstractFileByPath(`${dir}/${fileName}`)) {
-			let i = 2;
-			while (this.app.vault.getAbstractFileByPath(`${dir}/${baseName} (${i}).md`)) i++;
-			fileName = `${baseName} (${i}).md`;
+
+		const fileName = `template-${state.preset.name.replace(/[\\/:*?"<>|]/g, '-')}.md`;
+		const filePath = `${folder}/${fileName}`;
+
+		const lines: string[] = [
+			this.plugin.settings.language === 'en'
+				? '# auto-generated by Babylon - note body'
+				: '# авто-сгенерировано Babylon - тело заметки',
+			'',
+			'# {{title}}',
+			'',
+		];
+		const props = [...state.preset.fields]
+			.sort((a, b) => a.order - b.order)
+			.map((f) => f.property);
+		if (props.includes('description')) {
+			lines.push('> {{description}}', '');
 		}
-		const file = await this.app.vault.create(`${dir}/${fileName}`.replace(/^\//, ''), content);
-		const leaf = this.app.workspace.getLeaf();
-		if (leaf) await leaf.openFile(file);
-		new Notice(tr('preset-draft-created'));
+		lines.push('---', '');
+		lines.push(tr('template-instruction-p4', { fields: props.join(', ') }), '');
+		lines.push(tr('template-instruction-p5'), '');
+
+		const content = lines.join('\n');
+
+		try {
+			await this.ensureFolder(folder);
+		} catch {
+			new Notice(tr('preset-template-folder-error'));
+			return;
+		}
+
+		try {
+			const existing = this.app.vault.getAbstractFileByPath(filePath);
+			if (existing instanceof TFile) {
+				await this.app.vault.modify(existing, content);
+			} else {
+				await this.app.vault.create(filePath, content);
+			}
+
+			state.preset.template = filePath;
+			const mediaSettings = this.plugin.settings.media[this.mediaType];
+			if (mediaSettings) {
+				mediaSettings.templatePath = filePath;
+			}
+			await this.plugin.saveSettings();
+			new Notice(tr('preset-template-created', { path: filePath }));
+		} catch (err) {
+			console.error('Babylon: Template creation failed', err);
+			new Notice(tr('preset-template-error'));
+		}
+	}
+
+	private async ensureFolder(folder: string): Promise<void> {
+		const parts = folder.split('/');
+		let current = '';
+		for (const part of parts) {
+			current = current ? `${current}/${part}` : part;
+			if (!current) continue;
+			const exists = this.app.vault.getAbstractFileByPath(current);
+			if (!exists) {
+				try {
+					await this.app.vault.createFolder(current);
+				} catch (e) {
+					console.warn('Babylon: Failed to create folder', current, e);
+				}
+			}
+		}
 	}
 
 	onClose(): void {

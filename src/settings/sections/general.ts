@@ -3,6 +3,7 @@ import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import type { SupportedLocale } from '../../types';
 import { addFolderPicker } from '../ui/FolderPicker';
+import { formatDate } from '../../utils/date';
 
 export function createGeneralSection(
 	containerEl: HTMLElement,
@@ -21,6 +22,24 @@ export function createGeneralSection(
 					await plugin.saveSettings();
 				});
 		});
+
+	const dateFormatSetting = new Setting(containerEl)
+		.setName(tr('settings-date-format'))
+		.setDesc(tr('settings-date-format-hint'));
+	const preview = dateFormatSetting.descEl.createSpan({
+		cls: 'babylon-date-format-preview',
+		text: formatDate(new Date(), plugin.settings.dateFormat),
+	});
+	dateFormatSetting.addText((text) => {
+		text.setPlaceholder('YYYY-MM-DD');
+		text.setValue(plugin.settings.dateFormat);
+		text.inputEl.addClass('babylon-date-format-input');
+		text.onChange((value) => {
+			plugin.settings.dateFormat = value;
+			void plugin.saveSettings();
+			preview.setText(formatDate(new Date(), value));
+		});
+	});
 
 	const templateFolderSetting = new Setting(containerEl)
 		.setName(tr('settings-template-folder'))

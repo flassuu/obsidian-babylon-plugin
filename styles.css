@@ -904,16 +904,60 @@
 	margin: var(--size-4-3) 0;
 }
 
-.babylon-preset-settings-row {
+.babylon-preset-settings-list {
 	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+}
+
+/* shared grid for the preset-list header and each row: default | name | actions */
+.babylon-preset-table-th,
+.babylon-preset-settings-row {
+	display: grid;
+	grid-template-columns: 96px 1fr auto;
 	align-items: center;
-	justify-content: space-between;
 	gap: var(--size-4-2);
+}
+
+.babylon-preset-table-th {
+	font-size: 0.72em;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: var(--text-muted);
+	padding: 0 var(--size-4-2);
+	margin-bottom: var(--size-2-1);
+}
+
+.babylon-preset-table-th span {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.babylon-preset-table-th-actions {
+	text-align: right;
+}
+
+.babylon-preset-settings-row {
 	background-color: var(--background-primary-alt);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	padding: var(--size-2-3) var(--size-4-2);
 	transition: border-color 0.12s ease;
+}
+
+.babylon-preset-settings-row > .babylon-preset-default-radio {
+	grid-column: 1;
+}
+
+.babylon-preset-settings-row > .babylon-preset-settings-info {
+	grid-column: 2;
+}
+
+.babylon-preset-settings-row > .babylon-preset-settings-btns {
+	grid-column: 3;
+	justify-content: flex-end;
 }
 
 .babylon-preset-settings-row:hover {
@@ -1305,10 +1349,12 @@
 .babylon-preset-type {
 	grid-column: 4;
 	width: 100%;
+	text-align: center;
 }
 
 .babylon-preset-sync {
 	grid-column: 5;
+	justify-self: center;
 }
 
 .babylon-preset-column-actions {
@@ -1365,5 +1411,110 @@
 
 .babylon-field-pick-footer .setting-item {
 	justify-content: flex-end;
+}
+
+/* ── Preset Manager: header back button ────────────────────── */
+
+.babylon-preset-back-button {
+	position: absolute;
+	top: 8px;
+	left: 10px;
+	z-index: 20;
+	padding: 6px;
+	border-radius: var(--radius-m);
+	color: var(--text-muted);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: transparent;
+	box-shadow: none;
+	border: none;
+	cursor: pointer;
+}
+
+.babylon-preset-back-button.hidden {
+	display: none !important;
+}
+
+.babylon-preset-back-button svg {
+	width: 16px;
+	height: 16px;
+}
+
+.babylon-preset-back-button:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+/* ── Preset Manager: drag & drop field reordering ──────────── */
+
+.babylon-preset-drag-handle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	color: var(--text-faint);
+	cursor: grab;
+}
+
+.babylon-preset-drag-handle:active {
+	cursor: grabbing;
+}
+
+.babylon-preset-drag-handle svg {
+	width: 15px;
+	height: 15px;
+}
+
+.babylon-preset-drag-handle:hover {
+	color: var(--text-muted);
+}
+
+.babylon-preset-row-dragging {
+	opacity: 0.4;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.babylon-preset-row-drag-over {
+	border: 1px solid var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+/* ── Preset Manager: fade-in for field rows ────────────────── */
+
+.babylon-preset-row {
+	animation: babylon-fade-in 0.18s ease-out both;
+}
+
+@keyframes babylon-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(2px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.babylon-animate-in {
+	animation: babylon-fade-in 0.25s ease-out both;
+}
+
+/* ── General: date format preview ──────────────────────────── */
+
+.babylon-date-format-input {
+	width: 180px;
+}
+
+.babylon-date-format-preview {
+	display: block;
+	margin-top: var(--size-2-1);
+	font-size: 0.85em;
+	color: var(--text-accent);
+	font-weight: 600;
 }
 

@@ -31,6 +31,7 @@ export interface SyncSettings {
 
 export interface BabylonSettings {
 	language: SupportedLocale;
+	dateFormat: string;
 	templateFolder: string;
 	apiKeys: {
 		omdb: string;

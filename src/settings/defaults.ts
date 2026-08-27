@@ -10,6 +10,7 @@ const DEFAULT_ANIME_SELECTED = [
 
 export const DEFAULT_SETTINGS: BabylonSettings = {
 	language: 'en',
+	dateFormat: 'YYYY-MM-DD',
 	templateFolder: 'Templates',
 	apiKeys: {
 		omdb: '',
