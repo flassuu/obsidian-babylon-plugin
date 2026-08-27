@@ -1311,21 +1311,25 @@
 	margin-bottom: var(--size-2-1);
 }
 
-/* each header span gets the same left padding as its input counterpart,
-   so the text always starts at exactly the same x-position */
+/* header text positions match input left-edge: each header span gets
+   the same left padding as its input counterpart */
 .babylon-preset-th-move {
+	min-width: 42px;
 	padding-left: var(--size-2-1);
 }
 
 .babylon-preset-th-property {
+	min-width: 130px;
 	padding-left: var(--size-2-2);
 }
 
 .babylon-preset-th-apikey {
+	min-width: 140px;
 	padding-left: var(--size-2-2);
 }
 
 .babylon-preset-th-type {
+	min-width: 90px;
 	padding-left: var(--size-2-1);
 }
 
@@ -1354,6 +1358,7 @@
 .babylon-preset-property {
 	grid-column: 2;
 	width: 100%;
+	min-width: 130px;
 	padding: 0 var(--size-2-2);
 }
 
@@ -1367,13 +1372,14 @@
 .babylon-preset-apikey-box .babylon-preset-apikey {
 	flex: 1;
 	width: 100%;
-	min-width: 0;
+	min-width: 140px;
 	padding: 0 var(--size-2-2);
 }
 
 .babylon-preset-type {
 	grid-column: 4;
 	width: 100%;
+	min-width: 90px;
 	text-align: left;
 	padding: 0 var(--size-2-1);
 }
