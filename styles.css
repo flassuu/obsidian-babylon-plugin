@@ -1424,7 +1424,12 @@
 
 /* ── Preset Manager: back button (mirrors the close ✕ at the top-left) ── */
 
-.babylon-preset-back-button {
+/* override any theme button styles that might add a visible background/border */
+.babylon-preset-manager-modal .modal-title {
+	text-align: center !important;
+}
+
+.babylon-preset-manager-modal .babylon-preset-back-button {
 	position: absolute;
 	top: var(--size-4-2);
 	left: var(--size-4-2);
@@ -1437,23 +1442,28 @@
 	justify-content: center;
 	width: 26px;
 	height: 26px;
-	background: transparent;
-	box-shadow: none;
-	border: none;
+	background: transparent !important;
+	box-shadow: none !important;
+	border: none !important;
+	outline: none !important;
 	cursor: pointer;
+	appearance: none;
+	-webkit-appearance: none;
+	text-decoration: none;
 }
 
-.babylon-preset-back-button svg {
+.babylon-preset-manager-modal .babylon-preset-back-button svg {
 	width: var(--icon-s);
 	height: var(--icon-s);
+	stroke: currentColor;
 }
 
-.babylon-preset-back-button:hover {
-	background: var(--background-modifier-hover);
+.babylon-preset-manager-modal .babylon-preset-back-button:hover {
+	background: var(--background-modifier-hover) !important;
 	color: var(--text-normal);
 }
 
-.babylon-preset-back-button.hidden {
+.babylon-preset-manager-modal .babylon-preset-back-button.hidden {
 	display: none !important;
 }
 
