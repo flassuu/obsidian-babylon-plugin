@@ -16,7 +16,7 @@
 
 1. **Chat language:** The user and I communicate in Russian. All UI text in the plugin is English/Russian via i18n.
    **Russian UI tone:** always polite/formal, address the user as «Вы» — use plural/formal imperative forms («Нажмите», «Вставьте», «Скопируйте», «Выберите»), never informal «ты»-forms («Нажми», «Вставь», «Скопируй»).
-2. **Never commit or push** unless the user explicitly asks "закомить" / "запуш" / "commit" / "push".
+2. **Commit and push by default** after finishing any task ("делай это по дефолту"). Unless the user explicitly says not to, stage the relevant files, commit with a concise message, and push. Only ask before committing if the change is sensitive (secrets, large refactors) or if it's unclear which files belong to the task.
 3. **Always run `npm run build && npm run lint`** after making any code changes. Fix all errors before reporting back.
 4. **Read relevant files first** before editing — understand the current code style and patterns.
 5. **Write comments in code** — in plain English, lowercase, human-readable (like "// fetch user id first, then get the list").
@@ -56,7 +56,7 @@
 - `npm run lint` — ESLint (fix errors, warnings are OK if pre-existing)
 - **Build output** (`main.js`, `styles.css`, `manifest.json`) is symlinked into the Obsidian vault's `.obsidian/plugins/babylon/` folder.
 - **Hot Reload** plugin installed — Obsidian automatically reloads the plugin when `main.js` changes. No manual reload needed.
-- **Git:** only commit and push when the user explicitly asks ("закомить", "запуш", "commit", "push").
+- **Git:** commit and push by default after finishing a task. Review `git status`/`git diff` first, stage only the task's files, commit with a concise message matching repo style, then push. Don't commit or force-push when the user asks not to.
 
 ## References cheatsheet
 
