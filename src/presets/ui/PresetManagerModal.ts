@@ -236,16 +236,15 @@ export class PresetManagerModal extends Modal {
 		this.renderList();
 	}
 
-	// the back arrow sits at the start of the title row, next to the window title
+	// the back arrow mirrors the close (✕) button: transparent icon at the top-left
 	private ensureBackEl(): void {
 		if (this.backEl) return;
-		const btn = this.titleEl.createEl('button', {
+		const btn = this.modalEl.createEl('button', {
 			cls: 'babylon-preset-back-button',
 			attr: { 'aria-label': tr('preset-back') },
 		});
 		setIcon(btn, 'arrow-left');
 		btn.addEventListener('click', () => this.renderList());
-		this.titleEl.prepend(btn);
 		this.backEl = btn;
 	}
 
@@ -476,7 +475,7 @@ export class PresetManagerModal extends Modal {
 			th.createSpan({ cls: 'babylon-preset-th-apikey', text: tr('preset-column-apikey') });
 			th.createSpan({ cls: 'babylon-preset-th-type', text: tr('preset-column-type') });
 			th.createSpan({ cls: 'babylon-preset-th-sync', text: tr('preset-column-sync') });
-			th.createSpan({ cls: 'babylon-preset-column-actions', text: '' });
+			th.createSpan({ cls: 'babylon-preset-th-actions', text: tr('preset-column-actions') });
 
 			const listEl = box.createDiv({ cls: 'babylon-preset-list' });
 			const sorted = [...state.preset.fields].sort((a, b) => a.order - b.order);
@@ -536,29 +535,50 @@ export class PresetManagerModal extends Modal {
 		}).open();
 	}
 
-	// align the preset's fields with the selection from the quick picker
+	// align the preset's fields with the selection from the quick picker.
+	// new fields are inserted at their canonical (legacy field-map) position,
+	// keeping the relative order of the already-present fields.
 	private applyFieldSelection(selected: string[]): void {
 		const state = this.edit;
 		if (!state) return;
 		const selectedSet = new Set(selected);
-		const defs = new Map(getFields(this.mediaType).map((f) => [f.key, f]));
+		const canonical = getFields(this.mediaType);
+		const defs = new Map(canonical.map((f) => [f.key, f]));
 
 		const kept = state.preset.fields.filter((f) => selectedSet.has(f.apiKey));
 		const existingKeys = new Set(kept.map((f) => f.apiKey));
-		const added: PresetField[] = [];
-		for (const key of selected) {
-			if (existingKeys.has(key)) continue;
+		const newKeys = selected.filter((k) => !existingKeys.has(k) && defs.has(k));
+
+		// canonical slot of a key; unknown/custom keys sort to the end
+		const canIndex = (apiKey: string): number => {
+			const idx = canonical.findIndex((f) => f.key === apiKey);
+			return idx === -1 ? Number.POSITIVE_INFINITY : idx;
+		};
+
+		const result: PresetField[] = [...kept];
+		const sortedNew = [...newKeys].sort((a, b) => canIndex(a) - canIndex(b));
+
+		for (const key of sortedNew) {
 			const def = defs.get(key);
-			added.push({
+			const ins = canIndex(key);
+			let pos = result.length;
+			for (let i = 0; i < result.length; i++) {
+				if (canIndex(result[i]!.apiKey) > ins) {
+					pos = i;
+					break;
+				}
+			}
+			result.splice(pos, 0, {
 				id: makeFieldId(),
 				apiKey: key,
 				property: def ? def.key : key,
 				type: def ? def.type : 'string',
-				order: kept.length + added.length,
+				order: 0,
 				sync: def ? def.personal && this.personalOn : false,
 			});
 		}
-		state.preset.fields = [...kept, ...added].map((f, i) => ({ ...f, order: i }));
+
+		state.preset.fields = result.map((f, i) => ({ ...f, order: i }));
 
 		const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
 		if (box) this.renderFields(box as HTMLElement, state);
@@ -748,10 +768,19 @@ export class PresetManagerModal extends Modal {
 		this.reRenderFields();
 	}
 
-	// whether the drop indicator should sit above (before) or below (after) the row
-	private dropEdge(e: DragEvent, el: HTMLElement): 'before' | 'after' {
-		const rect = el.getBoundingClientRect();
-		return e.clientY - rect.top < rect.height / 2 ? 'before' : 'after';
+	// the drop target row for the cursor: in the upper half the gap is above this row,
+	// in the lower half the gap is above the NEXT row (unless this is the last row).
+	private dropTargetRow(container: HTMLElement, row: HTMLElement, lowerHalf: boolean): HTMLElement | null {
+		if (!lowerHalf) return row;
+		const rows = Array.from(container.querySelectorAll<HTMLElement>('.babylon-preset-row'));
+		return rows[rows.indexOf(row) + 1] ?? null;
+	}
+
+	private clearDropMarks(container: HTMLElement): void {
+		container.querySelectorAll('.babylon-preset-drop-before, .babylon-preset-drop-after').forEach((el) => {
+			el.removeClass('babylon-preset-drop-before');
+			el.removeClass('babylon-preset-drop-after');
+		});
 	}
 
 	private reRenderFields(): void {
@@ -762,11 +791,13 @@ export class PresetManagerModal extends Modal {
 	}
 
 	private renderFieldRow(container: HTMLElement, state: EditState, field: PresetField): void {
-		const row = container.createDiv({ cls: 'babylon-preset-row babylon-preset-draggable' });
+		const row = container.createDiv({
+			cls: 'babylon-preset-row babylon-preset-draggable',
+			attr: { 'data-field-id': field.id },
+		});
 
-		// drag handle + order number: reorder the field by dragging the grip
+		// drag handle: reorder the field by dragging the grip (icon only)
 		const move = row.createDiv({ cls: 'babylon-preset-move' });
-		move.createSpan({ cls: 'babylon-preset-order', text: String(field.order + 1) });
 		const handle = move.createEl('button', { cls: 'babylon-preset-drag-handle' });
 		setIcon(handle, 'grip-vertical');
 		handle.setAttribute('aria-label', tr('preset-drag-handle'));
@@ -798,19 +829,28 @@ export class PresetManagerModal extends Modal {
 			if (!this.dragFieldId || this.dragFieldId === field.id) return;
 			e.preventDefault();
 			e.dataTransfer!.dropEffect = 'move';
-			const edge = this.dropEdge(e, row);
-			container.querySelectorAll('.babylon-preset-drop-before, .babylon-preset-drop-after').forEach((el) => {
-				el.removeClass('babylon-preset-drop-before');
-				el.removeClass('babylon-preset-drop-after');
-			});
-			row.addClass(edge === 'after' ? 'babylon-preset-drop-after' : 'babylon-preset-drop-before');
+			this.clearDropMarks(container);
+			const rect = row.getBoundingClientRect();
+			const lower = e.clientY - rect.top >= rect.height / 2;
+			const target = this.dropTargetRow(container, row, lower);
+			if (target) {
+				target.addClass('babylon-preset-drop-before');
+			} else {
+				row.addClass('babylon-preset-drop-after');
+			}
 			this.dragoverFieldId = field.id;
 		});
 		row.addEventListener('drop', (e) => {
 			e.preventDefault();
 			if (!this.dragFieldId || this.dragFieldId === field.id) return;
-			const edge = this.dropEdge(e, row);
-			this.moveFieldTo(this.dragFieldId, field.id, edge);
+			const rect = row.getBoundingClientRect();
+			const lower = e.clientY - rect.top >= rect.height / 2;
+			const target = this.dropTargetRow(container, row, lower);
+			if (target) {
+				this.moveFieldTo(this.dragFieldId, target.getAttribute('data-field-id') ?? '', 'before');
+			} else {
+				this.moveFieldTo(this.dragFieldId, field.id, 'after');
+			}
 			row.draggable = false;
 		});
 

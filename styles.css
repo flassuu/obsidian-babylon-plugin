@@ -1295,7 +1295,7 @@
 .babylon-preset-th,
 .babylon-preset-row {
 	display: grid;
-	grid-template-columns: 44px 160px minmax(180px, 1fr) 110px 80px auto;
+	grid-template-columns: 34px 150px minmax(150px, 1fr) 100px 80px auto;
 	align-items: center;
 	gap: var(--size-2-3);
 }
@@ -1314,6 +1314,12 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	text-align: left;
+}
+
+.babylon-preset-th-actions,
+.babylon-preset-row > .babylon-preset-column-actions {
+	text-align: right;
 }
 
 /* field rows: pin each control into its grid column */
@@ -1325,18 +1331,8 @@
 .babylon-preset-move {
 	grid-column: 1;
 	display: flex;
-	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 2px;
-}
-
-.babylon-preset-order {
-	font-size: 0.68em;
-	font-weight: 600;
-	line-height: 1;
-	color: var(--text-muted);
-	user-select: none;
 }
 
 .babylon-preset-property {
@@ -1426,18 +1422,14 @@
 	justify-content: flex-end;
 }
 
-/* ── Preset Manager: header back button ────────────────────── */
-
-.babylon-preset-manager-modal .modal-title {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--size-2-2);
-}
+/* ── Preset Manager: back button (mirrors the close ✕ at the top-left) ── */
 
 .babylon-preset-back-button {
-	padding: 3px;
-	margin-right: var(--size-2-1);
+	position: absolute;
+	top: 9px;
+	left: 10px;
+	z-index: 20;
+	padding: 6px;
 	border-radius: var(--radius-m);
 	color: var(--text-muted);
 	display: inline-flex;
@@ -1447,31 +1439,19 @@
 	box-shadow: none;
 	border: none;
 	cursor: pointer;
-	flex-shrink: 0;
 }
 
 .babylon-preset-back-button svg {
-	width: 15px;
-	height: 15px;
+	width: 18px;
+	height: 18px;
 }
 
 .babylon-preset-back-button:hover {
 	color: var(--text-normal);
-	background: var(--background-modifier-hover);
 }
 
 .babylon-preset-back-button.hidden {
 	display: none !important;
-}
-
-.babylon-preset-back-button svg {
-	width: 16px;
-	height: 16px;
-}
-
-.babylon-preset-back-button:hover {
-	color: var(--text-normal);
-	background: var(--background-modifier-hover);
 }
 
 /* ── Preset Manager: drag & drop field reordering ──────────── */
@@ -1484,6 +1464,7 @@
 	background: transparent;
 	border: none;
 	box-shadow: none;
+	appearance: none;
 	color: var(--text-faint);
 	cursor: grab;
 }
@@ -1495,10 +1476,6 @@
 .babylon-preset-drag-handle svg {
 	width: 15px;
 	height: 15px;
-}
-
-.babylon-preset-drag-handle:hover {
-	color: var(--text-muted);
 }
 
 .babylon-preset-row-dragging {
@@ -1531,11 +1508,7 @@
 	bottom: -1px;
 }
 
-/* ── Preset Manager: fade-in for field rows ────────────────── */
-
-.babylon-preset-row {
-	animation: babylon-fade-in 0.18s ease-out both;
-}
+/* ── Preset Manager: name-error fade-in ─────────────────────── */
 
 @keyframes babylon-fade-in {
 	from {
