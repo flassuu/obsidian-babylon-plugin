@@ -918,8 +918,10 @@ export class PresetManagerModal extends Modal {
 		if (!this.personalOn || !this.plugin.settings.sync.enabled) syncBox.addClass('babylon-preset-sync-disabled');
 		sync.addEventListener('change', () => {
 			field.sync = sync.checked;
-			const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
-			if (box) this.renderFields(box as HTMLElement, state);
+			window.requestAnimationFrame(() => {
+				const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
+				if (box) this.renderFields(box as HTMLElement, state);
+			});
 		});
 
 		const actions = row.createDiv({ cls: 'babylon-preset-column-actions' });
