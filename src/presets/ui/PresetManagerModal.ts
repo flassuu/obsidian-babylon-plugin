@@ -909,13 +909,13 @@ export class PresetManagerModal extends Modal {
 			if (box) this.renderFields(box as HTMLElement, state);
 		});
 
-		const syncLabel = row.createEl('label', { cls: 'babylon-preset-sync' });
-		syncLabel.createSpan({ text: tr('preset-sync') });
-		const sync = syncLabel.createEl('input', { attr: { type: 'checkbox' } });
+		const syncBox = row.createDiv({ cls: 'babylon-preset-sync' });
+		const sync = syncBox.createEl('input', { attr: { type: 'checkbox' } });
 		sync.checked = field.sync;
 		sync.disabled = !this.personalOn || !this.plugin.settings.sync.enabled;
-		syncLabel.setAttribute('title', tr('preset-sync-desc'));
-		if (!this.personalOn || !this.plugin.settings.sync.enabled) syncLabel.addClass('babylon-preset-sync-disabled');
+		sync.setAttribute('aria-label', tr('preset-sync'));
+		syncBox.setAttribute('aria-label', tr('preset-sync-desc'));
+		if (!this.personalOn || !this.plugin.settings.sync.enabled) syncBox.addClass('babylon-preset-sync-disabled');
 		sync.addEventListener('change', () => {
 			field.sync = sync.checked;
 			const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
