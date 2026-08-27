@@ -1311,14 +1311,24 @@
 	margin-bottom: var(--size-2-1);
 }
 
-.babylon-preset-th span {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	text-align: left;
+/* each header span gets the same left padding as its input counterpart,
+   so the text always starts at exactly the same x-position */
+.babylon-preset-th-move {
+	padding-left: var(--size-2-1);
 }
 
-/* center the sync header, right-align actions to match buttons */
+.babylon-preset-th-property {
+	padding-left: var(--size-2-2);
+}
+
+.babylon-preset-th-apikey {
+	padding-left: var(--size-2-2);
+}
+
+.babylon-preset-th-type {
+	padding-left: var(--size-2-1);
+}
+
 .babylon-preset-th-sync {
 	text-align: center;
 }
@@ -1373,6 +1383,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	cursor: pointer;
 }
 
 .babylon-preset-sync input[type="checkbox"] {
@@ -1381,7 +1392,6 @@
 	height: 16px;
 	margin: 0;
 	cursor: pointer;
-	accent-color: var(--interactive-accent);
 }
 
 .babylon-preset-column-actions {
