@@ -1426,15 +1426,17 @@
 
 .babylon-preset-back-button {
 	position: absolute;
-	top: 9px;
-	left: 10px;
-	z-index: 20;
-	padding: 6px;
+	top: var(--size-4-2);
+	left: var(--size-4-2);
+	z-index: var(--layer-modal);
+	padding: var(--size-2-1);
 	border-radius: var(--radius-m);
 	color: var(--text-muted);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	width: 26px;
+	height: 26px;
 	background: transparent;
 	box-shadow: none;
 	border: none;
@@ -1442,11 +1444,12 @@
 }
 
 .babylon-preset-back-button svg {
-	width: 18px;
-	height: 18px;
+	width: var(--icon-s);
+	height: var(--icon-s);
 }
 
 .babylon-preset-back-button:hover {
+	background: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
 
