@@ -98,3 +98,33 @@ Log line `notes: L=67 R=67 ★` looked suspicious but was real data: the AniList
 
 - Any modal that calls `contentEl.empty()` + rebuilds its body should wrap the render in `preserveReRenderState` (with a `scrollerSelector` if it has an inner scrollable list).
 - Don't add fields to GraphQL `requestedFields` that have no `graphql` mapping or are internal identity keys.
+
+## [fixed] Creating a second preset overwrites the first one
+
+### Symptom
+
+After creating one preset, creating another overwrote the existing one instead of adding a new card next to it.
+
+### Root cause
+
+The new `PresetManagerModal` used the preset **name** as the identity key for saving (`originalName`). A freshly created preset carried the same default name as the first one (e.g. `Main`), so on save the save logic found an existing row by that name and `Object.assign`-ed over it instead of pushing a new entry. Two different presets could never coexist.
+
+### Solution
+
+- Track whether the open editor is a brand-new preset with an explicit `isNew` flag in the edit state.
+- On save: `push` when `isNew`; otherwise locate the row by `originalName` (only for edits of an existing preset) and update it.
+- New presets start with an **empty** name (no more `Main` default) and duplicate names are rejected (live red-highlighted input + blocked save), which also removes the accidental "same name → overwrite" path.
+
+## [fixed] Field-list scroll jumps in the Preset Editor on small interactions
+
+### Symptom
+
+In the new `PresetManagerModal`, toggling sync, changing the type, expanding format, moving or removing a field reset the field list's scroll position.
+
+### Solution
+
+The fix was already documented above (`src/utils/scroll.ts` → `preserveReRenderState`). The new manager now follows it: field-level interactions re-render **only** the inner field list (`.babylon-preset-list`) wrapped in `preserveReRenderState(scope, render, '.babylon-preset-list')` instead of rebuilding the entire editor body. The name/template inputs are kept stable so they also don't lose focus.
+
+### How to prevent recurrence
+
+Keep field rows and the "Fields" header in a stable container; any re-render triggered from inside a field row must target that container only and go through `preserveReRenderState`.

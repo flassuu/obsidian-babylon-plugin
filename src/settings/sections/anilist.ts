@@ -1,11 +1,11 @@
-import { App, DropdownComponent, FuzzySuggestModal, Notice, Setting, setIcon } from 'obsidian';
+import { DropdownComponent, Notice, Setting, setIcon } from 'obsidian';
 import type BabylonPlugin from '../../main';
 import { tr } from '../../i18n';
 import { getAnilistAuthUrl, testAnilistToken } from '../../utils/fetcher';
 import { normalizePath } from './media';
 import { FieldSelector } from '../ui/FieldSelector';
 import { GenerateTemplateModal } from '../ui/GenerateTemplateModal';
-import { addFolderPickerToControl } from '../ui/FolderPicker';
+import { addFolderPickerToControl, addFilePicker } from '../ui/FolderPicker';
 import { createCollapsible, createObsidianToggle } from '../ui/CollapsibleSection';
 import { SyncEngine, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, fetchAllListData } from '../../sync';
 import { SyncReviewModal } from '../../sync/ui/SyncReviewModal';
@@ -13,15 +13,9 @@ import { FieldMapEditorModal } from '../../sync/ui/FieldMapEditorModal';
 import {
 	makePresetPath,
 	loadPresets,
-	savePresets,
-	ensureSingleDefault,
-	buildDefaultPreset,
-	makeCopyName,
-	makeFieldId,
 	resolveActivePreset,
 } from '../../presets';
-import type { MediaPreset } from '../../presets';
-import { PresetEditorModal } from '../../presets/ui/PresetEditorModal';
+import { PresetManagerModal } from '../../presets/ui/PresetManagerModal';
 
 const CLIENT_ID = '45744';
 
@@ -166,91 +160,14 @@ function createPresetSection(containerEl: HTMLElement, plugin: BabylonPlugin): v
 	const mediaType = 'anime';
 	const presetPath = `${plugin.settings.templateFolder}/${makePresetPath(mediaType)}`;
 
-	const listEl = containerEl.createDiv({ cls: 'babylon-preset-settings-list' });
-
-	async function renderList(): Promise<void> {
-		const collection = await loadPresets(plugin.app, presetPath);
-		listEl.empty();
-		if (!collection || collection.presets.length === 0) {
-			listEl.createEl('p', {
-				text: tr('preset-none-found'),
-				cls: 'setting-item-description',
-			});
-			return;
-		}
-		for (const preset of collection.presets) {
-			renderRow(listEl, preset);
-		}
-	}
-
-	function renderRow(container: HTMLElement, preset: MediaPreset): void {
-		const row = container.createDiv({ cls: 'babylon-preset-settings-row' });
-		const info = row.createDiv({ cls: 'babylon-preset-settings-info' });
-		info.createSpan({ text: preset.name, cls: 'babylon-preset-settings-name' });
-		if (preset.isDefault) {
-			info.createSpan({
-				text: tr('preset-default-badge'),
-				cls: 'babylon-preset-settings-badge',
-			});
-		}
-		info.createSpan({
-			text: tr('preset-field-count', { count: preset.fields.length }),
-			cls: 'babylon-preset-settings-count',
-		});
-
-		const btns = row.createDiv({ cls: 'babylon-preset-settings-btns' });
-		if (!preset.isDefault) {
-			const defBtn = btns.createEl('button', { text: tr('preset-set-default') });
-			defBtn.addEventListener('click', () => {
-				void (async () => {
-					const col = await loadPresets(plugin.app, presetPath);
-					if (!col) return;
-					ensureSingleDefault(col, preset.name);
-					await savePresets(plugin.app, presetPath, col);
-					await plugin.updateAnilistProvider();
-					await renderList();
-				})();
-			});
-		}
-		const editBtn = btns.createEl('button', { text: tr('preset-edit') });
-		editBtn.addEventListener('click', () => {
-			new PresetEditorModal(plugin, mediaType, preset).open();
-		});
-		const dupBtn = btns.createEl('button', { text: tr('preset-duplicate') });
-		dupBtn.addEventListener('click', () => {
-			void (async () => {
-				const col = await loadPresets(plugin.app, presetPath);
-				if (!col) return;
-				const copyName = makeCopyName(preset.name);
-				if (col.presets.some((p) => p.name === copyName)) {
-					new Notice(tr('preset-name-clash'));
-					return;
-				}
-				const copy: MediaPreset = JSON.parse(JSON.stringify(preset)) as MediaPreset;
-				copy.name = copyName;
-				copy.isDefault = false;
-				copy.fields = copy.fields.map((f) => ({ ...f, id: makeFieldId() }));
-				col.presets.push(copy);
-				await savePresets(plugin.app, presetPath, col);
-				await renderList();
-			})();
-		});
-	}
-
 	new Setting(containerEl)
-		.setName(tr('preset-create'))
-		.setDesc(tr('preset-create-desc'))
+		.setName(tr('preset-manager-title'))
+		.setDesc(tr('preset-manager-desc'))
 		.addButton((btn) => {
-			btn.setButtonText(tr('preset-create'));
+			btn.setButtonText(tr('preset-manager-title'));
 			btn.setCta();
 			btn.onClick(() => {
-				void (async () => {
-					const collection = await loadPresets(plugin.app, presetPath);
-					const hasDefault = collection?.presets.some((p) => p.isDefault) ?? false;
-					const preset = buildDefaultPreset(mediaType);
-					if (hasDefault) preset.isDefault = false;
-					new PresetEditorModal(plugin, mediaType, preset).open();
-				})();
+				new PresetManagerModal(plugin, mediaType).open();
 			});
 		});
 
@@ -271,11 +188,6 @@ function createPresetSection(containerEl: HTMLElement, plugin: BabylonPlugin): v
 				})();
 			});
 		});
-
-	// render the list on the next tick so the DOM is ready
-	window.setTimeout(() => {
-		void renderList();
-	}, 50);
 }
 
 function createLegacyFieldMapUI(containerEl: HTMLElement, plugin: BabylonPlugin): void {
@@ -417,39 +329,9 @@ function createTemplateManager(containerEl: HTMLElement, plugin: BabylonPlugin):
 			btn.setCta();
 			btn.onClick(() => {
 				const modal = new GenerateTemplateModal(plugin, 'anime');
-				modal.onClose = () => {
-					// templatePath was already set inside modal
-					// update the search input value in-place if it exists
-			const templateSearch = containerEl.querySelector('.babylon-template-search');
-				if (templateSearch instanceof HTMLInputElement) {
-					templateSearch.value = animeSettings?.templatePath ?? '';
-				}
-				};
 				modal.open();
 			});
 		});
-}
-
-class FileSuggestModal extends FuzzySuggestModal<string> {
-	private onSelect: (path: string) => void;
-
-	constructor(app: App, onSelect: (path: string) => void) {
-		super(app);
-		this.onSelect = onSelect;
-		this.setPlaceholder('Search template files...');
-	}
-
-	getItems(): string[] {
-		return this.app.vault.getMarkdownFiles().map((f) => f.path);
-	}
-
-	getItemText(item: string): string {
-		return item;
-	}
-
-	onChooseItem(item: string): void {
-		this.onSelect(item);
-	}
 }
 
 export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlugin): void {
@@ -569,45 +451,9 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 			.setName(tr('settings-template'))
 			.setDesc(tr('settings-template-desc'));
 
-		templateSetting.addSearch((search) => {
-			search.setValue(animeSettings.templatePath);
-			search.onChange((value) => {
-				animeSettings.templatePath = normalizePath(app, value);
-				void plugin.saveSettings();
-			});
-			search.inputEl.addClass('babylon-folder-input');
-			search.inputEl.addClass('babylon-template-search');
-		});
-
-		templateSetting.addButton((btn) => {
-			btn.setIcon('folder-open');
-			btn.setTooltip('Browse files');
-			btn.onClick(() => {
-				const modal = new FileSuggestModal(app, (path) => {
-					animeSettings.templatePath = path;
-					void plugin.saveSettings();
-					// update the search input in-place
-					const searchInput = templateSetting.settingEl.querySelector('.babylon-template-search');
-					if (searchInput instanceof HTMLInputElement) {
-						searchInput.value = path;
-					}
-				});
-				modal.open();
-			});
-		});
-
-		templateSetting.addButton((btn) => {
-			btn.setIcon('x');
-			btn.setTooltip('Clear');
-			btn.onClick(() => {
-				animeSettings.templatePath = '';
-				void plugin.saveSettings();
-				// update the search input in-place instead of full re-render
-				const searchInput = templateSetting.settingEl.querySelector('.babylon-template-search');
-				if (searchInput instanceof HTMLInputElement) {
-					searchInput.value = '';
-				}
-			});
+		addFilePicker(templateSetting, app, animeSettings.templatePath, (value) => {
+			animeSettings.templatePath = normalizePath(app, value);
+			void plugin.saveSettings();
 		});
 	}
 

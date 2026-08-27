@@ -66,7 +66,7 @@ export class ContentService {
 			const fm = buildFrontmatter(details, preset);
 			const body = await renderPresetBody(
 				this.app,
-				mediaSettings.templatePath,
+				preset.template ?? mediaSettings.templatePath,
 				details,
 				preset,
 			);

@@ -39,6 +39,9 @@ export interface MediaPreset {
 	name: string;
 	isDefault: boolean;
 	fields: PresetField[];
+	// optional .md template file that provides the note body for this preset;
+	// falls back to the media-type template when unset
+	template?: string;
 }
 
 // one JSON sidecar per media type holding all presets for that type

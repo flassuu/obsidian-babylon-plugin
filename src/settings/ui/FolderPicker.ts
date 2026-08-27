@@ -1,63 +1,64 @@
-import { App, FuzzySuggestModal, Setting, SearchComponent, TFolder, setIcon } from 'obsidian';
+import { App, AbstractInputSuggest, Setting, TextComponent, TFolder } from 'obsidian';
+import { tr } from '../../i18n';
 
-class FolderSuggestModal extends FuzzySuggestModal<string> {
-	private onSelect: (path: string) => void;
+// Obsidian's own folder/file pickers (e.g. "Template folder location" in the
+// core Templates settings) are built on the public AbstractInputSuggest class,
+// which renders an inline suggestion dropdown when you type or focus an input.
+// We do the same here: two concrete suggester types — folders and markdown
+// files — that behave identically to the native Obsidian picker.
+abstract class BaseSuggest extends AbstractInputSuggest<string> {
+	private input: HTMLInputElement;
 
-	constructor(app: App, onSelect: (path: string) => void) {
-		super(app);
-		this.onSelect = onSelect;
-		this.setPlaceholder('Choose a folder...');
+	constructor(app: App, inputEl: HTMLInputElement) {
+		super(app, inputEl);
+		this.input = inputEl;
 	}
 
-	getItems(): string[] {
-		return this.app.vault.getAllLoadedFiles()
-			.filter((f): f is TFolder => f instanceof TFolder)
-			.map((f) => f.path);
+	protected abstract getSuggestions(query: string): string[];
+
+	renderSuggestion(path: string, el: HTMLElement): void {
+		el.createDiv({ text: path });
 	}
 
-	getItemText(item: string): string {
-		return item;
-	}
-
-	onChooseItem(item: string): void {
-		this.onSelect(item);
+	selectSuggestion(path: string): void {
+		this.setValue(path);
+		// notify the text component so its onChange (which persists the value) runs
+		this.input.dispatchEvent(new Event('input', { bubbles: true }));
+		this.close();
 	}
 }
 
+export class FolderSuggest extends BaseSuggest {
+	protected getSuggestions(query: string): string[] {
+		const q = query.trim().toLowerCase();
+		const folders = this.app.vault.getAllLoadedFiles()
+			.filter((f): f is TFolder => f instanceof TFolder)
+			.map((f) => f.path);
+		return q ? folders.filter((p) => p.toLowerCase().includes(q)) : folders;
+	}
+}
+
+export class FileSuggest extends BaseSuggest {
+	protected getSuggestions(query: string): string[] {
+		const q = query.trim().toLowerCase();
+		const files = this.app.vault.getMarkdownFiles().map((f) => f.path);
+		return q ? files.filter((p) => p.toLowerCase().includes(q)) : files;
+	}
+}
+
+// Folder picker for a normal settings row: a text field that shows Obsidian's
+// native folder-suggestion dropdown.
 export function addFolderPicker(
 	setting: Setting,
 	app: App,
 	currentValue: string,
 	onChange: (value: string) => void,
 ): void {
-	let searchCmp: SearchComponent | null = null;
-
-	setting.addSearch((search) => {
-		searchCmp = search;
-		search.setValue(currentValue);
-		search.onChange(onChange);
-		search.inputEl.addClass('babylon-folder-input');
-	});
-
-	setting.addButton((btn) => {
-		btn.setIcon('folder-open');
-		btn.setTooltip('Browse folders');
-		btn.onClick(() => {
-			const modal = new FolderSuggestModal(app, (path) => {
-				onChange(path);
-				searchCmp?.setValue(path);
-			});
-			modal.open();
-		});
-	});
-
-	setting.addButton((btn) => {
-		btn.setIcon('x');
-		btn.setTooltip('Clear');
-		btn.onClick(() => {
-			onChange('');
-			searchCmp?.setValue('');
-		});
+	setting.addText((text) => {
+		text.setPlaceholder(tr('settings-folder-placeholder'));
+		text.setValue(currentValue);
+		text.onChange(onChange);
+		new FolderSuggest(app, text.inputEl);
 	});
 }
 
@@ -68,27 +69,26 @@ export function addFolderPickerToControl(
 	currentValue: string,
 	onChange: (value: string) => void,
 ): void {
-	const searchCmp = new SearchComponent(containerEl);
-	searchCmp.setValue(currentValue);
-	searchCmp.onChange(onChange);
-	searchCmp.inputEl.addClass('babylon-folder-input');
+	const text = new TextComponent(containerEl);
+	text.inputEl.addClass('babylon-folder-input');
+	text.setPlaceholder(tr('settings-folder-placeholder'));
+	text.setValue(currentValue);
+	text.onChange(onChange);
+	new FolderSuggest(app, text.inputEl);
+}
 
-	const browseBtn = containerEl.createEl('button', { cls: 'clickable-icon' });
-	setIcon(browseBtn, 'folder-open');
-	browseBtn.setAttribute('aria-label', 'Browse folders');
-	browseBtn.addEventListener('click', () => {
-		const modal = new FolderSuggestModal(app, (path) => {
-			onChange(path);
-			searchCmp.setValue(path);
-		});
-		modal.open();
-	});
-
-	const clearBtn = containerEl.createEl('button', { cls: 'clickable-icon' });
-	setIcon(clearBtn, 'x');
-	clearBtn.setAttribute('aria-label', 'Clear');
-	clearBtn.addEventListener('click', () => {
-		onChange('');
-		searchCmp.setValue('');
+// File picker for a normal settings row: a text field that shows Obsidian's
+// native markdown-file suggestion dropdown.
+export function addFilePicker(
+	setting: Setting,
+	app: App,
+	currentValue: string,
+	onChange: (value: string) => void,
+): void {
+	setting.addText((text) => {
+		text.setPlaceholder(tr('settings-template-placeholder'));
+		text.setValue(currentValue);
+		text.onChange(onChange);
+		new FileSuggest(app, text.inputEl);
 	});
 }
