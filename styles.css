@@ -1295,7 +1295,7 @@
 .babylon-preset-th,
 .babylon-preset-row {
 	display: grid;
-	grid-template-columns: 34px 160px minmax(180px, 1fr) 110px 80px auto;
+	grid-template-columns: 44px 160px minmax(180px, 1fr) 110px 80px auto;
 	align-items: center;
 	gap: var(--size-2-3);
 }
@@ -1324,6 +1324,19 @@
 
 .babylon-preset-move {
 	grid-column: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+}
+
+.babylon-preset-order {
+	font-size: 0.68em;
+	font-weight: 600;
+	line-height: 1;
+	color: var(--text-muted);
+	user-select: none;
 }
 
 .babylon-preset-property {
@@ -1415,12 +1428,16 @@
 
 /* ── Preset Manager: header back button ────────────────────── */
 
+.babylon-preset-manager-modal .modal-title {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-2-2);
+}
+
 .babylon-preset-back-button {
-	position: absolute;
-	top: 8px;
-	left: 10px;
-	z-index: 20;
-	padding: 6px;
+	padding: 3px;
+	margin-right: var(--size-2-1);
 	border-radius: var(--radius-m);
 	color: var(--text-muted);
 	display: inline-flex;
@@ -1430,6 +1447,17 @@
 	box-shadow: none;
 	border: none;
 	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.babylon-preset-back-button svg {
+	width: 15px;
+	height: 15px;
+}
+
+.babylon-preset-back-button:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
 }
 
 .babylon-preset-back-button.hidden {
@@ -1475,12 +1503,32 @@
 
 .babylon-preset-row-dragging {
 	opacity: 0.4;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.babylon-preset-row-drag-over {
-	border: 1px solid var(--interactive-accent);
-	box-shadow: 0 0 0 2px var(--interactive-accent);
+/* dropped insertion is a thin accent line between rows, not a filled box */
+.babylon-preset-row {
+	position: relative;
+}
+
+.babylon-preset-drop-before::before,
+.babylon-preset-drop-after::after {
+	content: '';
+	position: absolute;
+	left: var(--size-2-2);
+	right: var(--size-2-2);
+	height: 2px;
+	border-radius: 2px;
+	background: var(--interactive-accent);
+	z-index: 2;
+	pointer-events: none;
+}
+
+.babylon-preset-drop-before::before {
+	top: -1px;
+}
+
+.babylon-preset-drop-after::after {
+	bottom: -1px;
 }
 
 /* ── Preset Manager: fade-in for field rows ────────────────── */
@@ -1510,11 +1558,10 @@
 	width: 180px;
 }
 
-.babylon-date-format-preview {
-	display: block;
-	margin-top: var(--size-2-1);
-	font-size: 0.85em;
-	color: var(--text-accent);
+.babylon-date-format-desc .u-pop {
 	font-weight: 600;
+	color: var(--text-accent);
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
 }
 

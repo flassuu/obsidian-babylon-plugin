@@ -212,6 +212,7 @@ export class PresetManagerModal extends Modal {
 	private backEl: HTMLElement | null = null;
 	private dragFieldId: string | null = null;
 	private dragoverFieldId: string | null = null;
+	private activeFieldId: string | null = null;
 
 	constructor(plugin: BabylonPlugin, mediaType: MediaType = 'anime') {
 		super(plugin.app);
@@ -235,16 +236,16 @@ export class PresetManagerModal extends Modal {
 		this.renderList();
 	}
 
-	// the back arrow sits at the top-left of the modal, mirrored from the close (✕) button
+	// the back arrow sits at the start of the title row, next to the window title
 	private ensureBackEl(): void {
 		if (this.backEl) return;
-		const btn = this.modalEl.createEl('button', {
+		const btn = this.titleEl.createEl('button', {
 			cls: 'babylon-preset-back-button',
 			attr: { 'aria-label': tr('preset-back') },
 		});
-		btn.setAttribute('title', tr('preset-back'));
 		setIcon(btn, 'arrow-left');
 		btn.addEventListener('click', () => this.renderList());
+		this.titleEl.prepend(btn);
 		this.backEl = btn;
 	}
 
@@ -470,7 +471,7 @@ export class PresetManagerModal extends Modal {
 		const render = () => {
 			box.empty();
 			const th = box.createDiv({ cls: 'babylon-preset-th' });
-			th.createSpan({ cls: 'babylon-preset-th-move' });
+			th.createSpan({ cls: 'babylon-preset-th-move', text: tr('preset-column-order') });
 			th.createSpan({ cls: 'babylon-preset-th-property', text: tr('preset-column-property') });
 			th.createSpan({ cls: 'babylon-preset-th-apikey', text: tr('preset-column-apikey') });
 			th.createSpan({ cls: 'babylon-preset-th-type', text: tr('preset-column-type') });
@@ -495,6 +496,11 @@ export class PresetManagerModal extends Modal {
 
 	// reveal a name error under the input with a smooth fade-in (used on save)
 	private showNameError(msg: string): void {
+		const input = this.contentEl.querySelector('.babylon-preset-name-input');
+		if (input instanceof HTMLElement) {
+			input.addClass('babylon-preset-name-error-input');
+			input.focus();
+		}
 		const el = this.contentEl.querySelector('.babylon-preset-name-error');
 		if (!(el instanceof HTMLElement)) return;
 		el.textContent = msg;
@@ -503,11 +509,11 @@ export class PresetManagerModal extends Modal {
 		el.classList.remove('babylon-animate-in');
 		void el.offsetWidth;
 		el.classList.add('babylon-animate-in');
-		const input = this.contentEl.querySelector('.babylon-preset-name-input');
-		if (input instanceof HTMLElement) input.focus();
 	}
 
 	private clearNameError(): void {
+		const input = this.contentEl.querySelector('.babylon-preset-name-input');
+		if (input instanceof HTMLElement) input.removeClass('babylon-preset-name-error-input');
 		const el = this.contentEl.querySelector('.babylon-preset-name-error');
 		if (!el) return;
 		el.textContent = '';
@@ -689,22 +695,34 @@ export class PresetManagerModal extends Modal {
 	private addField(): void {
 		const state = this.edit;
 		if (!state) return;
-		const field: PresetField = {
+		const newField: PresetField = {
 			id: makeFieldId(),
 			apiKey: '',
 			property: '',
 			type: 'string',
-			order: state.preset.fields.length,
+			order: 0,
 			sync: false,
 		};
-		state.preset.fields.push(field);
-		state.expandedFormat.add(field.id);
+		const fields = [...state.preset.fields].sort((a, b) => a.order - b.order);
+		let insertAt = fields.length;
+		if (this.activeFieldId) {
+			const idx = fields.findIndex((f) => f.id === this.activeFieldId);
+			if (idx !== -1) insertAt = idx + 1;
+		}
+		fields.splice(insertAt, 0, newField);
+		fields.forEach((f, i) => {
+			f.order = i;
+		});
+		state.preset.fields = fields;
+		state.expandedFormat.add(newField.id);
+		this.activeFieldId = newField.id;
 	}
 
 	private removeField(id: string): void {
 		const state = this.edit;
 		if (!state) return;
 		state.preset.fields = state.preset.fields.filter((f) => f.id !== id);
+		if (this.activeFieldId === id) this.activeFieldId = null;
 		state.vmaps.delete(id);
 		state.numberInputs.delete(id);
 		state.expandedFormat.delete(id);
@@ -712,20 +730,28 @@ export class PresetManagerModal extends Modal {
 		if (box) this.renderFields(box as HTMLElement, state);
 	}
 
-	private moveFieldTo(dragId: string, targetId: string): void {
+	private moveFieldTo(dragId: string, targetId: string, pos: 'before' | 'after'): void {
 		const state = this.edit;
 		if (!state) return;
 		if (dragId === targetId) return;
 		const fields = [...state.preset.fields].sort((a, b) => a.order - b.order);
 		const from = fields.findIndex((f) => f.id === dragId);
-		const to = fields.findIndex((f) => f.id === targetId);
-		if (from === -1 || to === -1) return;
+		if (from === -1) return;
 		const [moved] = fields.splice(from, 1);
+		let to = fields.findIndex((f) => f.id === targetId);
+		if (to === -1) return;
+		if (pos === 'after') to += 1;
 		fields.splice(to, 0, moved!);
 		fields.forEach((f, i) => {
 			f.order = i;
 		});
 		this.reRenderFields();
+	}
+
+	// whether the drop indicator should sit above (before) or below (after) the row
+	private dropEdge(e: DragEvent, el: HTMLElement): 'before' | 'after' {
+		const rect = el.getBoundingClientRect();
+		return e.clientY - rect.top < rect.height / 2 ? 'before' : 'after';
 	}
 
 	private reRenderFields(): void {
@@ -738,12 +764,12 @@ export class PresetManagerModal extends Modal {
 	private renderFieldRow(container: HTMLElement, state: EditState, field: PresetField): void {
 		const row = container.createDiv({ cls: 'babylon-preset-row babylon-preset-draggable' });
 
-		// drag handle: reorder the field by dragging
+		// drag handle + order number: reorder the field by dragging the grip
 		const move = row.createDiv({ cls: 'babylon-preset-move' });
+		move.createSpan({ cls: 'babylon-preset-order', text: String(field.order + 1) });
 		const handle = move.createEl('button', { cls: 'babylon-preset-drag-handle' });
 		setIcon(handle, 'grip-vertical');
 		handle.setAttribute('aria-label', tr('preset-drag-handle'));
-		handle.setAttribute('title', tr('preset-drag-handle'));
 		handle.addEventListener('mousedown', () => {
 			row.draggable = true;
 		});
@@ -763,22 +789,28 @@ export class PresetManagerModal extends Modal {
 			this.dragoverFieldId = null;
 			row.draggable = false;
 			row.removeClass('babylon-preset-row-dragging');
-			container.querySelectorAll('.babylon-preset-row-drag-over').forEach((el) =>
-				el.removeClass('babylon-preset-row-drag-over'),
-			);
+			container.querySelectorAll('.babylon-preset-drop-before, .babylon-preset-drop-after').forEach((el) => {
+				el.removeClass('babylon-preset-drop-before');
+				el.removeClass('babylon-preset-drop-after');
+			});
 		});
 		row.addEventListener('dragover', (e) => {
 			if (!this.dragFieldId || this.dragFieldId === field.id) return;
 			e.preventDefault();
-			const list = container.querySelectorAll('.babylon-preset-row');
-			list.forEach((el) => el.removeClass('babylon-preset-row-drag-over'));
-			row.addClass('babylon-preset-row-drag-over');
+			e.dataTransfer!.dropEffect = 'move';
+			const edge = this.dropEdge(e, row);
+			container.querySelectorAll('.babylon-preset-drop-before, .babylon-preset-drop-after').forEach((el) => {
+				el.removeClass('babylon-preset-drop-before');
+				el.removeClass('babylon-preset-drop-after');
+			});
+			row.addClass(edge === 'after' ? 'babylon-preset-drop-after' : 'babylon-preset-drop-before');
 			this.dragoverFieldId = field.id;
 		});
 		row.addEventListener('drop', (e) => {
 			e.preventDefault();
-			if (!this.dragFieldId || !this.dragoverFieldId || this.dragFieldId === this.dragoverFieldId) return;
-			this.moveFieldTo(this.dragFieldId, this.dragoverFieldId);
+			if (!this.dragFieldId || this.dragFieldId === field.id) return;
+			const edge = this.dropEdge(e, row);
+			this.moveFieldTo(this.dragFieldId, field.id, edge);
 			row.draggable = false;
 		});
 
@@ -788,6 +820,9 @@ export class PresetManagerModal extends Modal {
 		});
 		prop.value = field.property;
 		prop.setAttribute('aria-label', tr('preset-property'));
+		prop.addEventListener('focus', () => {
+			this.activeFieldId = field.id;
+		});
 		prop.addEventListener('input', () => {
 			field.property = prop.value.trim();
 		});
@@ -799,6 +834,9 @@ export class PresetManagerModal extends Modal {
 		});
 		api.value = field.apiKey;
 		api.setAttribute('aria-label', tr('preset-apikey'));
+		api.addEventListener('focus', () => {
+			this.activeFieldId = field.id;
+		});
 		api.addEventListener('input', () => {
 			field.apiKey = api.value.trim();
 		});
@@ -806,6 +844,7 @@ export class PresetManagerModal extends Modal {
 		setIcon(pickBtn, 'search');
 		pickBtn.setAttribute('aria-label', tr('preset-pick-field'));
 		pickBtn.addEventListener('click', () => {
+			this.activeFieldId = field.id;
 			const items = getFields(this.mediaType).map((f) => f.key);
 			items.push('advancedScores');
 			new FieldSuggestModal(this.app, items, (key) => {
@@ -821,6 +860,9 @@ export class PresetManagerModal extends Modal {
 			const opt = typeSel.createEl('option', { value: t, text: t });
 			if (t === field.type) opt.selected = true;
 		}
+		typeSel.addEventListener('focus', () => {
+			this.activeFieldId = field.id;
+		});
 		typeSel.addEventListener('change', () => {
 			field.type = typeSel.value as PresetFieldType;
 			const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
@@ -845,8 +887,8 @@ export class PresetManagerModal extends Modal {
 		const isExpanded = state.expandedFormat.has(field.id);
 		setIcon(expandBtn, isExpanded ? 'chevron-down' : 'chevron-right');
 		expandBtn.setAttribute('aria-label', tr('preset-format'));
-		expandBtn.setAttribute('title', tr('preset-format'));
 		expandBtn.addEventListener('click', () => {
+			this.activeFieldId = field.id;
 			if (isExpanded) {
 				state.expandedFormat.delete(field.id);
 			} else {
@@ -859,7 +901,6 @@ export class PresetManagerModal extends Modal {
 		const removeBtn = actions.createEl('button', { cls: 'babylon-preset-remove' });
 		setIcon(removeBtn, 'x');
 		removeBtn.setAttribute('aria-label', tr('preset-remove-field'));
-		removeBtn.setAttribute('title', tr('preset-remove-field'));
 		removeBtn.addEventListener('click', () => this.removeField(field.id));
 
 		if (isExpanded) {

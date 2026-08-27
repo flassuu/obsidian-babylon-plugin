@@ -170,6 +170,7 @@ src/
 - Sentence case for headings, buttons, and titles; action-oriented imperatives for steps.
 - Keep in-app strings short, consistent, free of jargon; bold literal UI labels.
 - Arrow notation for navigation: **Settings → Community plugins**.
+- **Tooltips (convention):** every interactive element gets exactly ONE tooltip — use `aria-label` only, never also set a `title` attribute (avoids duplicate/native tooltips). This matches the field inputs (e.g. the api-key input). Mirror in new UI code.
 
 ### Troubleshooting (build/runtime)
 - Plugin not loading: confirm `main.js`, `manifest.json`, `styles.css` at the top level of the vault plugin folder; run `npm run build`.

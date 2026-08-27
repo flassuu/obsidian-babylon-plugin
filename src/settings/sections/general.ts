@@ -23,11 +23,18 @@ export function createGeneralSection(
 				});
 		});
 
-	const dateFormatSetting = new Setting(containerEl)
-		.setName(tr('settings-date-format'))
-		.setDesc(tr('settings-date-format-hint'));
-	const preview = dateFormatSetting.descEl.createSpan({
-		cls: 'babylon-date-format-preview',
+	const dateFormatSetting = new Setting(containerEl).setName(tr('settings-date-format'));
+	const desc = dateFormatSetting.descEl.createSpan({ cls: 'babylon-date-format-desc' });
+	desc.createSpan({ text: tr('settings-date-format-syntax-before') });
+	desc.createEl('a', {
+		text: tr('settings-date-format-syntax-link'),
+		href: 'https://momentjs.com/docs/#/displaying/format/',
+		attr: { target: '_blank', rel: 'noopener' },
+	});
+	desc.createEl('br');
+	desc.createSpan({ text: tr('settings-date-format-current') });
+	const previewEl = desc.createEl('b', {
+		cls: 'u-pop',
 		text: formatDate(new Date(), plugin.settings.dateFormat),
 	});
 	dateFormatSetting.addText((text) => {
@@ -37,7 +44,7 @@ export function createGeneralSection(
 		text.onChange((value) => {
 			plugin.settings.dateFormat = value;
 			void plugin.saveSettings();
-			preview.setText(formatDate(new Date(), value));
+			previewEl.setText(formatDate(new Date(), value));
 		});
 	});
 

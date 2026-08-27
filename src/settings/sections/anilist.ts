@@ -10,11 +10,6 @@ import { createCollapsible, createObsidianToggle } from '../ui/CollapsibleSectio
 import { SyncEngine, saveFieldMap, generateFieldMapFromTemplate, makeFieldMapPath, fetchAllListData } from '../../sync';
 import { SyncReviewModal } from '../../sync/ui/SyncReviewModal';
 import { FieldMapEditorModal } from '../../sync/ui/FieldMapEditorModal';
-import {
-	makePresetPath,
-	loadPresets,
-	resolveActivePreset,
-} from '../../presets';
 import { PresetManagerModal } from '../../presets/ui/PresetManagerModal';
 
 const CLIENT_ID = '45744';
@@ -158,7 +153,6 @@ function createClearIgnoresUI(containerEl: HTMLElement, plugin: BabylonPlugin): 
 
 function createPresetSection(containerEl: HTMLElement, plugin: BabylonPlugin): void {
 	const mediaType = 'anime';
-	const presetPath = `${plugin.settings.templateFolder}/${makePresetPath(mediaType)}`;
 
 	new Setting(containerEl)
 		.setName(tr('preset-manager-title'))
@@ -168,24 +162,6 @@ function createPresetSection(containerEl: HTMLElement, plugin: BabylonPlugin): v
 			btn.setCta();
 			btn.onClick(() => {
 				new PresetManagerModal(plugin, mediaType).open();
-			});
-		});
-
-	new Setting(containerEl)
-		.setName(tr('preset-regenerate'))
-		.setDesc(tr('preset-regenerate-desc'))
-		.addButton((btn) => {
-			btn.setButtonText(tr('preset-regenerate'));
-			btn.onClick(() => {
-				void (async () => {
-					const collection = await loadPresets(plugin.app, presetPath);
-					const preset = resolveActivePreset(collection);
-					if (!preset) {
-						new Notice(tr('preset-none-found'));
-						return;
-					}
-					new GenerateTemplateModal(plugin, mediaType, preset).open();
-				})();
 			});
 		});
 }
@@ -422,12 +398,6 @@ export function createAnimeSection(containerEl: HTMLElement, plugin: BabylonPlug
 		level: 3,
 	});
 	createPresetSection(presets.body, plugin);
-
-	// the template file only provides the note body when a preset exists
-	presets.body.createEl('p', {
-		text: tr('preset-body-hint'),
-		cls: 'setting-item-description',
-	});
 
 	// Output folder - the folder picker lives in the group header, the body
 	// carries the template file override
