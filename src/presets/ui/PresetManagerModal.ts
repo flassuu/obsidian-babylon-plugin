@@ -444,6 +444,7 @@ export class PresetManagerModal extends Modal {
 			state.preset.template = value || undefined;
 		});
 		this.templateInput = templateSetting.controlEl.querySelector('input');
+		if (this.templateInput) this.templateInput.placeholder = tr('preset-template-placeholder');
 		templateSetting.addExtraButton((b) => {
 			b.setIcon('file-plus')
 				.setTooltip(tr('preset-template-create'))
