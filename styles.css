@@ -1118,16 +1118,45 @@
 	gap: var(--size-2-3);
 }
 
-/* the name + template settings in the editor fill the row nicely */
-.babylon-preset-editor .setting-item-info {
-	width: 42%;
-	min-width: 160px;
+/* name + template fields share the native settings-group box styling,
+   matching the collapsible sections in the plugin settings menu */
+.babylon-preset-config-box {
+	background-color: var(--background-primary-alt);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	overflow: hidden;
 }
 
-.babylon-preset-editor .setting-item-control {
-	gap: var(--size-2-2);
-	flex: 1;
-	min-width: 0;
+.babylon-preset-config-box > .setting-items {
+	background: transparent;
+	border: none;
+}
+
+/* create-template button: proper bordered button to the left of the field */
+.babylon-preset-create-template {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--input-height);
+	height: var(--input-height);
+	flex-shrink: 0;
+	background: transparent;
+	color: var(--text-muted);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	padding: 0;
+	transition: color 0.12s ease, background 0.12s ease;
+}
+
+.babylon-preset-create-template svg {
+	width: 18px;
+	height: 18px;
+}
+
+.babylon-preset-create-template:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
 }
 
 /* ── Preset Manager: tabular field list ────────────────────── */

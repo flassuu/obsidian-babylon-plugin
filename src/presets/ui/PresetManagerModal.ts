@@ -417,8 +417,14 @@ export class PresetManagerModal extends Modal {
 		const wrapper = this.contentEl.createDiv({ cls: 'babylon-preset-manager' });
 		const editor = wrapper.createDiv({ cls: 'babylon-preset-editor' });
 
+		// name + template fields share the native settings-group structure so
+		// the rows get the exact same padding/font/desc as the settings menu
+		const configGroup = editor.createDiv({ cls: 'setting-group babylon-preset-config-box' });
+		configGroup.createDiv({ cls: 'setting-group-search', attr: { tabindex: '-1' } });
+		const configBody = configGroup.createDiv({ cls: 'setting-items' });
+
 		// name
-		const nameSetting = new Setting(editor).setName(tr('preset-name')).setDesc(tr('preset-name-desc'));
+		const nameSetting = new Setting(configBody).setName(tr('preset-name')).setDesc(tr('preset-name-desc'));
 		nameSetting.descEl.createDiv({ cls: 'babylon-preset-name-error hidden' });
 		let nameInput: HTMLInputElement | null = null;
 		nameSetting.addText((text) => {
@@ -437,7 +443,7 @@ export class PresetManagerModal extends Modal {
 		}
 
 		// per-preset template file + quick create button
-		const templateSetting = new Setting(editor)
+		const templateSetting = new Setting(configBody)
 			.setName(tr('preset-template'))
 			.setDesc(tr('preset-template-desc'));
 		addFilePicker(templateSetting, this.app, state.preset.template ?? '', (value) => {
@@ -445,11 +451,17 @@ export class PresetManagerModal extends Modal {
 		});
 		this.templateInput = templateSetting.controlEl.querySelector('input');
 		if (this.templateInput) this.templateInput.placeholder = tr('preset-template-placeholder');
-		templateSetting.addExtraButton((b) => {
-			b.setIcon('file-plus')
-				.setTooltip(tr('preset-template-create'))
-				.onClick(() => void this.createTemplateFile());
+
+		// create-template button placed to the LEFT of the file field
+		const createBtn = templateSetting.controlEl.createEl('button', {
+			cls: 'babylon-preset-create-template',
 		});
+		setIcon(createBtn, 'file-plus');
+		createBtn.setAttribute('aria-label', tr('preset-template-create'));
+		createBtn.addEventListener('click', () => void this.createTemplateFile());
+		if (this.templateInput) {
+			templateSetting.controlEl.insertBefore(createBtn, this.templateInput);
+		}
 
 		// fields — bordered frame like the field-selector identity picker
 		const fieldsFrame = editor.createDiv({ cls: 'babylon-preset-fieldsbox' });

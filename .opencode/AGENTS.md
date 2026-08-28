@@ -16,7 +16,7 @@
 
 1. **Chat language:** The user and I communicate in Russian. All UI text in the plugin is English/Russian via i18n.
    **Russian UI tone:** always polite/formal, address the user as «Вы» — use plural/formal imperative forms («Нажмите», «Вставьте», «Скопируйте», «Выберите»), never informal «ты»-forms («Нажми», «Вставь», «Скопируй»).
-2. **Commit and push by default** after finishing any task ("делай это по дефолту"). Unless the user explicitly says not to, stage the relevant files, commit with a concise message, and push. Only ask before committing if the change is sensitive (secrets, large refactors) or if it's unclear which files belong to the task.
+2. **Commit and push by default** after finishing a task — but only for significant changes (new features, refactors, bug fixes). Minor tweaks (CSS adjustments, placeholder text, i18n wording) do NOT need a commit — just build + lint and report to the user. The user will ask to commit when ready.
 3. **Always run `npm run build && npm run lint`** after making any code changes. Fix all errors before reporting back.
 4. **Read relevant files first** before editing — understand the current code style and patterns.
 5. **Write comments in code** — in plain English, lowercase, human-readable (like "// fetch user id first, then get the list").
