@@ -210,6 +210,7 @@ export class PresetManagerModal extends Modal {
 	private collection: PresetCollection | null = null;
 	private edit: EditState | null = null;
 	private backEl: HTMLElement | null = null;
+	private templateInput: HTMLInputElement | null = null;
 	private dragFieldId: string | null = null;
 	private dragoverFieldId: string | null = null;
 	private activeFieldId: string | null = null;
@@ -228,6 +229,11 @@ export class PresetManagerModal extends Modal {
 
 	private presetPath(): string {
 		return `${this.plugin.settings.templateFolder}/${makePresetPath(this.mediaType)}`;
+	}
+
+	private editorTitle(name: string): string {
+		const base = tr('preset-manager-title');
+		return name ? `${base}: ${name}` : base;
 	}
 
 	async onOpen(): Promise<void> {
@@ -259,6 +265,7 @@ export class PresetManagerModal extends Modal {
 	private renderList(): void {
 		this.edit = null;
 		this.contentEl.empty();
+		this.titleEl.setText(tr('preset-manager-title'));
 		if (this.backEl) this.backEl.addClass('hidden');
 
 		const wrapper = this.contentEl.createDiv({ cls: 'babylon-preset-manager' });
@@ -404,6 +411,7 @@ export class PresetManagerModal extends Modal {
 			return;
 		}
 		this.contentEl.empty();
+		this.titleEl.setText(this.editorTitle(state.preset.name));
 		if (this.backEl) this.backEl.removeClass('hidden');
 
 		const wrapper = this.contentEl.createDiv({ cls: 'babylon-preset-manager' });
@@ -420,6 +428,7 @@ export class PresetManagerModal extends Modal {
 			nameInput = text.inputEl;
 			text.onChange((v) => {
 				state.preset.name = v.trim();
+				this.titleEl.setText(this.editorTitle(v.trim()));
 			});
 		});
 		if (state.isNew) {
@@ -434,6 +443,7 @@ export class PresetManagerModal extends Modal {
 		addFilePicker(templateSetting, this.app, state.preset.template ?? '', (value) => {
 			state.preset.template = value || undefined;
 		});
+		this.templateInput = templateSetting.controlEl.querySelector('input');
 		templateSetting.addExtraButton((b) => {
 			b.setIcon('file-plus')
 				.setTooltip(tr('preset-template-create'))
@@ -470,12 +480,12 @@ export class PresetManagerModal extends Modal {
 		const render = () => {
 			box.empty();
 			const th = box.createDiv({ cls: 'babylon-preset-th' });
-			th.createSpan({ cls: 'babylon-preset-th-move', text: tr('preset-column-order') });
+			th.createSpan({ cls: 'babylon-preset-th-move' });
 			th.createSpan({ cls: 'babylon-preset-th-property', text: tr('preset-column-property') });
 			th.createSpan({ cls: 'babylon-preset-th-apikey', text: tr('preset-column-apikey') });
 			th.createSpan({ cls: 'babylon-preset-th-type', text: tr('preset-column-type') });
-			th.createSpan({ cls: 'babylon-preset-th-sync', text: tr('preset-column-sync') });
-			th.createSpan({ cls: 'babylon-preset-th-actions', text: tr('preset-column-actions') });
+			th.createSpan({ cls: 'babylon-preset-th-sync' });
+			th.createSpan({ cls: 'babylon-preset-th-actions' });
 
 			const listEl = box.createDiv({ cls: 'babylon-preset-list' });
 			const sorted = [...state.preset.fields].sort((a, b) => a.order - b.order);
@@ -1116,6 +1126,7 @@ export class PresetManagerModal extends Modal {
 			}
 
 			state.preset.template = filePath;
+			if (this.templateInput) this.templateInput.value = filePath;
 			const mediaSettings = this.plugin.settings.media[this.mediaType];
 			if (mediaSettings) {
 				mediaSettings.templatePath = filePath;
