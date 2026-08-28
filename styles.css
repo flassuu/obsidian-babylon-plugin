@@ -1149,7 +1149,8 @@
 
 /* fields header: title + add button on one line */
 .babylon-preset-fields-header {
-	display: flex;
+	display: grid;
+	grid-template-columns: auto 1fr auto;
 	align-items: center;
 	gap: var(--size-2-2);
 	padding: var(--size-2-3) var(--size-4-2);
@@ -1157,18 +1158,21 @@
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.babylon-preset-fields-title {
-	font-size: 14px;
-	font-weight: 600;
-	vertical-align: middle;
+.babylon-preset-fields-title-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
 }
 
-.babylon-preset-fields-title svg {
-	width: 14px;
-	height: 14px;
-	color: var(--text-muted);
-	margin-right: var(--size-2-2);
-	vertical-align: middle;
+.babylon-preset-fields-title-icon svg {
+	width: 15px;
+	height: 15px;
+}
+
+.babylon-preset-fields-title-text {
+	font-size: 14px;
+	font-weight: 600;
 }
 
 .babylon-preset-pick-many {
