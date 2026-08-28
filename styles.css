@@ -1158,11 +1158,12 @@
 }
 
 .babylon-preset-fields-title {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
 	gap: var(--size-2-2);
-	font-size: var(--font-ui-small);
-	font-weight: 500;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1;
 }
 
 .babylon-preset-fields-title svg {
