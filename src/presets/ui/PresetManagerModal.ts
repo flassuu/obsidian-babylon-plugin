@@ -453,7 +453,9 @@ export class PresetManagerModal extends Modal {
 		// fields — bordered frame like the field-selector identity picker
 		const fieldsFrame = editor.createDiv({ cls: 'babylon-preset-fieldsbox' });
 		const fieldsHeader = fieldsFrame.createDiv({ cls: 'babylon-preset-fields-header' });
-		fieldsHeader.createSpan({ cls: 'babylon-preset-fields-title', text: tr('preset-fields') });
+		const titleEl = fieldsHeader.createSpan({ cls: 'babylon-preset-fields-title' });
+		setIcon(titleEl, 'list');
+		titleEl.createSpan({ text: tr('preset-fields') });
 		const pickBtn = fieldsHeader.createEl('button', { cls: 'babylon-preset-pick-many' });
 		setIcon(pickBtn, 'list-plus');
 		pickBtn.append(tr('preset-fields-add'));

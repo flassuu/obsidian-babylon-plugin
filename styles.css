@@ -1144,33 +1144,41 @@
 }
 
 .babylon-preset-fields-list {
-	padding: var(--size-2-2);
+	padding: 0;
 }
 
-/* fields header: title + quick-pick button on one line */
+/* fields header: title + add button on one line */
 .babylon-preset-fields-header {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--size-4-2);
-	margin-top: var(--size-4-3);
+	gap: var(--size-2-2);
 	padding: var(--size-2-2) var(--size-4-2);
 	background: var(--background-secondary);
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .babylon-preset-fields-title {
-	font-size: 0.9em;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	font-size: 0.85em;
 	font-weight: 600;
+}
+
+.babylon-preset-fields-title svg {
+	width: 14px;
+	height: 14px;
+	color: var(--text-muted);
 }
 
 .babylon-preset-pick-many {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--size-2-2);
+	gap: var(--size-2-1);
+	margin-left: auto;
 	font-size: 0.8em;
-	padding: 2px 10px;
-	border-radius: 999px;
+	padding: 2px 8px;
+	border-radius: var(--radius-s);
 	border: 1px solid var(--background-modifier-border);
 	background: transparent;
 	color: var(--text-muted);
@@ -1179,8 +1187,8 @@
 }
 
 .babylon-preset-pick-many svg {
-	width: 14px;
-	height: 14px;
+	width: 12px;
+	height: 12px;
 }
 
 .babylon-preset-pick-many:hover {
