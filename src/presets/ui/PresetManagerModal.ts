@@ -450,23 +450,24 @@ export class PresetManagerModal extends Modal {
 				.onClick(() => void this.createTemplateFile());
 		});
 
-		// fields
-		const fieldsHeader = editor.createDiv({ cls: 'babylon-preset-fields-header' });
+		// fields — bordered frame like the field-selector identity picker
+		const fieldsFrame = editor.createDiv({ cls: 'babylon-preset-fieldsbox' });
+		const fieldsHeader = fieldsFrame.createDiv({ cls: 'babylon-preset-fields-header' });
 		fieldsHeader.createSpan({ cls: 'babylon-preset-fields-title', text: tr('preset-fields') });
 		const pickBtn = fieldsHeader.createEl('button', { cls: 'babylon-preset-pick-many' });
 		setIcon(pickBtn, 'list-plus');
 		pickBtn.append(tr('preset-fields-add'));
-		pickBtn.setAttribute('title', tr('preset-fields-add-desc'));
+		pickBtn.setAttribute('aria-label', tr('preset-fields-add-desc'));
 		pickBtn.addEventListener('click', () => this.openQuickPick());
 
-		const fieldsBox = editor.createDiv({ cls: 'babylon-preset-fieldsbox' });
-		this.renderFields(fieldsBox, state, true);
+		const fieldsList = fieldsFrame.createDiv({ cls: 'babylon-preset-fields-list' });
+		this.renderFields(fieldsList, state, true);
 
 		new Setting(editor)
 			.addButton((b) =>
 				b.setIcon('plus').setTooltip(tr('preset-add-field')).onClick(() => {
 					this.addField();
-					this.renderFields(fieldsBox, this.edit!, false);
+					this.renderFields(fieldsList, this.edit!, false);
 				}),
 			)
 			.addButton((b) =>
@@ -590,7 +591,7 @@ export class PresetManagerModal extends Modal {
 
 		state.preset.fields = result.map((f, i) => ({ ...f, order: i }));
 
-		const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
+		const box = this.contentEl.querySelector('.babylon-preset-fields-list');
 		if (box) this.renderFields(box as HTMLElement, state);
 	}
 
@@ -756,7 +757,7 @@ export class PresetManagerModal extends Modal {
 		state.vmaps.delete(id);
 		state.numberInputs.delete(id);
 		state.expandedFormat.delete(id);
-		const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
+		const box = this.contentEl.querySelector('.babylon-preset-fields-list');
 		if (box) this.renderFields(box as HTMLElement, state);
 	}
 
@@ -794,7 +795,7 @@ export class PresetManagerModal extends Modal {
 	}
 
 	private reRenderFields(): void {
-		const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
+		const box = this.contentEl.querySelector('.babylon-preset-fields-list');
 		const state = this.edit;
 		if (!box || !state) return;
 		this.renderFields(box as HTMLElement, state);
@@ -899,7 +900,7 @@ export class PresetManagerModal extends Modal {
 			items.push('advancedScores');
 			new FieldSuggestModal(this.app, items, (key) => {
 				field.apiKey = key;
-				const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
+				const box = this.contentEl.querySelector('.babylon-preset-fields-list');
 				if (box) this.renderFields(box as HTMLElement, state);
 			}).open();
 		});
@@ -915,7 +916,7 @@ export class PresetManagerModal extends Modal {
 		});
 		typeSel.addEventListener('change', () => {
 			field.type = typeSel.value as PresetFieldType;
-			const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
+			const box = this.contentEl.querySelector('.babylon-preset-fields-list');
 			if (box) this.renderFields(box as HTMLElement, state);
 		});
 
@@ -931,7 +932,7 @@ export class PresetManagerModal extends Modal {
 			sync.checked = !sync.checked;
 			field.sync = sync.checked;
 			window.requestAnimationFrame(() => {
-				const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
+				const box = this.contentEl.querySelector('.babylon-preset-fields-list');
 				if (box) this.renderFields(box as HTMLElement, state);
 			});
 		};
@@ -943,7 +944,7 @@ export class PresetManagerModal extends Modal {
 		sync.addEventListener('change', () => {
 			field.sync = sync.checked;
 			window.requestAnimationFrame(() => {
-				const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
+				const box = this.contentEl.querySelector('.babylon-preset-fields-list');
 				if (box) this.renderFields(box as HTMLElement, state);
 			});
 		});
@@ -960,7 +961,7 @@ export class PresetManagerModal extends Modal {
 			} else {
 				state.expandedFormat.add(field.id);
 			}
-			const box = this.contentEl.querySelector('.babylon-preset-fieldsbox');
+			const box = this.contentEl.querySelector('.babylon-preset-fields-list');
 			if (box) this.renderFields(box as HTMLElement, state);
 		});
 

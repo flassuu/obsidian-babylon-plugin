@@ -1135,6 +1135,18 @@
 
 /* ── Preset Manager: tabular field list ────────────────────── */
 
+/* fields section: bordered frame like the field-selector identity picker */
+.babylon-preset-fieldsbox {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	overflow: hidden;
+	background: var(--background-primary);
+}
+
+.babylon-preset-fields-list {
+	padding: var(--size-2-2);
+}
+
 /* fields header: title + quick-pick button on one line */
 .babylon-preset-fields-header {
 	display: flex;
@@ -1142,10 +1154,13 @@
 	justify-content: space-between;
 	gap: var(--size-4-2);
 	margin-top: var(--size-4-3);
+	padding: var(--size-2-2) var(--size-4-2);
+	background: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .babylon-preset-fields-title {
-	font-size: 0.95em;
+	font-size: 0.9em;
 	font-weight: 600;
 }
 
@@ -1178,9 +1193,9 @@
 .babylon-preset-th,
 .babylon-preset-row {
 	display: grid;
-	grid-template-columns: 42px minmax(130px, 1fr) minmax(140px, 1fr) 90px 44px auto;
+	grid-template-columns: 36px 1fr 1fr 80px 36px auto;
 	align-items: center;
-	gap: 0;
+	gap: var(--size-2-3);
 }
 
 .babylon-preset-th {
@@ -1189,30 +1204,7 @@
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
 	color: var(--text-muted);
-	padding: 0;
-	margin-bottom: var(--size-2-1);
-}
-
-/* header text positions match input left-edge: each header span gets
-   the same left padding as its input counterpart */
-.babylon-preset-th-move {
-	min-width: 42px;
-	padding-left: var(--size-2-1);
-}
-
-.babylon-preset-th-property {
-	min-width: 130px;
-	padding-left: var(--size-2-2);
-}
-
-.babylon-preset-th-apikey {
-	min-width: 140px;
-	padding-left: var(--size-2-2);
-}
-
-.babylon-preset-th-type {
-	min-width: 90px;
-	padding-left: var(--size-2-1);
+	padding: var(--size-2-2) var(--size-2-2) var(--size-2-1);
 }
 
 .babylon-preset-th-sync {
@@ -1221,22 +1213,36 @@
 
 .babylon-preset-th-actions {
 	text-align: right;
+	padding-right: var(--size-2-2);
 }
 
-/* field rows: pin each control into its grid column */
+/* field rows: card-style with background + border */
+.babylon-preset-row {
+	background-color: var(--background-primary-alt);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: var(--size-2-2);
+	margin: 0 var(--size-2-2) var(--size-2-2);
+	transition: border-color 0.12s ease;
+}
+
+.babylon-preset-row:hover {
+	border-color: var(--background-modifier-border-hover);
+}
+
 .babylon-preset-move {
 	grid-column: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 0 var(--size-2-1);
 }
 
 .babylon-preset-property {
 	grid-column: 2;
 	width: 100%;
-	min-width: 130px;
+	height: var(--input-height);
 	padding: 0 var(--size-2-2);
+	border-radius: var(--radius-s);
 }
 
 .babylon-preset-apikey-box {
@@ -1249,16 +1255,19 @@
 .babylon-preset-apikey-box .babylon-preset-apikey {
 	flex: 1;
 	width: 100%;
-	min-width: 140px;
+	min-width: 0;
+	height: var(--input-height);
 	padding: 0 var(--size-2-2);
+	border-radius: var(--radius-s);
 }
 
 .babylon-preset-type {
 	grid-column: 4;
 	width: 100%;
-	min-width: 90px;
+	height: var(--input-height);
 	text-align: left;
-	padding: 0 var(--size-2-1);
+	padding: 0 var(--size-2-2);
+	border-radius: var(--radius-s);
 }
 
 .babylon-preset-sync {
@@ -1283,6 +1292,7 @@
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--size-2-1);
+	padding-right: var(--size-2-1);
 }
 
 /* uniform icon-only buttons: pick (search), expand (chevron), remove (x) */
