@@ -1112,12 +1112,6 @@
 	gap: var(--size-4-3);
 }
 
-.babylon-preset-fields-title {
-	font-size: 0.95em;
-	font-weight: 600;
-	margin-top: var(--size-4-2);
-}
-
 .babylon-preset-list {
 	display: flex;
 	flex-direction: column;
@@ -1126,11 +1120,24 @@
 
 /* the name + template settings in the editor fill the row nicely */
 .babylon-preset-editor .setting-item-info {
-	width: 38%;
+	width: 42%;
+	min-width: 160px;
+}
+
+.babylon-preset-editor .setting-item-info .setting-item-name {
+	font-size: var(--font-ui-medium);
+	font-weight: 500;
+}
+
+.babylon-preset-editor .setting-item-info .setting-item-description {
+	font-size: var(--font-ui-smallest);
+	color: var(--text-muted);
 }
 
 .babylon-preset-editor .setting-item-control {
 	gap: var(--size-2-2);
+	flex: 1;
+	min-width: 0;
 }
 
 /* ── Preset Manager: tabular field list ────────────────────── */

@@ -418,7 +418,7 @@ export class PresetManagerModal extends Modal {
 		const editor = wrapper.createDiv({ cls: 'babylon-preset-editor' });
 
 		// name
-		const nameSetting = new Setting(editor).setName(tr('preset-name')).setDesc('');
+		const nameSetting = new Setting(editor).setName(tr('preset-name')).setDesc(tr('preset-name-desc'));
 		nameSetting.descEl.createDiv({ cls: 'babylon-preset-name-error hidden' });
 		let nameInput: HTMLInputElement | null = null;
 		nameSetting.addText((text) => {
