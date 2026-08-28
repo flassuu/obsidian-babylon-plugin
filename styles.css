@@ -1158,17 +1158,17 @@
 }
 
 .babylon-preset-fields-title {
-	display: flex;
-	align-items: center;
-	gap: var(--size-2-2);
 	font-size: 14px;
 	font-weight: 600;
+	vertical-align: middle;
 }
 
 .babylon-preset-fields-title svg {
 	width: 14px;
 	height: 14px;
 	color: var(--text-muted);
+	margin-right: var(--size-2-2);
+	vertical-align: middle;
 }
 
 .babylon-preset-pick-many {
