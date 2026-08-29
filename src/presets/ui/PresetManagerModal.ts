@@ -498,12 +498,36 @@ export class PresetManagerModal extends Modal {
 		const render = () => {
 			box.empty();
 			const th = box.createDiv({ cls: 'babylon-preset-th' });
-			th.createSpan({ cls: 'babylon-preset-th-move' });
-			th.createSpan({ cls: 'babylon-preset-th-property', text: tr('preset-column-property') });
-			th.createSpan({ cls: 'babylon-preset-th-apikey', text: tr('preset-column-apikey') });
-			th.createSpan({ cls: 'babylon-preset-th-type', text: tr('preset-column-type') });
-			th.createSpan({ cls: 'babylon-preset-th-sync' });
-			th.createSpan({ cls: 'babylon-preset-th-actions' });
+			th.createSpan({
+				cls: 'babylon-preset-th-move',
+				text: tr('preset-column-move'),
+				attr: { 'aria-label': tr('preset-column-move-tip') },
+			});
+			th.createSpan({
+				cls: 'babylon-preset-th-property',
+				text: tr('preset-column-property'),
+				attr: { 'aria-label': tr('preset-column-property-tip') },
+			});
+			th.createSpan({
+				cls: 'babylon-preset-th-apikey',
+				text: tr('preset-column-apikey'),
+				attr: { 'aria-label': tr('preset-column-apikey-tip') },
+			});
+			th.createSpan({
+				cls: 'babylon-preset-th-type',
+				text: tr('preset-column-type'),
+				attr: { 'aria-label': tr('preset-column-type-tip') },
+			});
+			th.createSpan({
+				cls: 'babylon-preset-th-sync',
+				text: tr('preset-column-sync'),
+				attr: { 'aria-label': tr('preset-column-sync-tip') },
+			});
+			th.createSpan({
+				cls: 'babylon-preset-th-actions',
+				text: tr('preset-column-actions'),
+				attr: { 'aria-label': tr('preset-column-actions-tip') },
+			});
 
 			const listEl = box.createDiv({ cls: 'babylon-preset-list' });
 			const sorted = [...state.preset.fields].sort((a, b) => a.order - b.order);

@@ -710,11 +710,7 @@
 .babylon-preset-list {
 	display: flex;
 	flex-direction: column;
-	gap: var(--size-4-2);
-	margin: var(--size-4-3) 0;
-	max-height: 50vh;
-	overflow-y: auto;
-	padding-right: var(--size-2-2);
+	gap: var(--size-2-3);
 }
 
 /* format sub-box, separated from the control row */
@@ -1112,12 +1108,6 @@
 	gap: var(--size-4-3);
 }
 
-.babylon-preset-list {
-	display: flex;
-	flex-direction: column;
-	gap: var(--size-2-3);
-}
-
 /* name + template fields share the native settings-group box styling,
    matching the collapsible sections in the plugin settings menu.
    Root cause: Obsidian's .setting-group resolves its cross-size from
@@ -1205,6 +1195,14 @@
 	box-sizing: border-box;
 }
 
+/* columns holder: the header strip and the rows live in ONE scroll
+   container, so any padding/scrollbar narrows both equally and the header
+   labels always stay in line with the row controls. */
+.babylon-preset-fields-list {
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
 /* fields header: title + add button on one line */
 .babylon-preset-fields-header {
 	display: grid;
@@ -1259,16 +1257,27 @@
 	background: var(--background-modifier-hover);
 }
 
-/* shared column template for the header and each field row */
+/* shared column template for the header and each field row.
+   The move/sync tracks are fixed to the SAME width in header and rows so
+   the columns always line up (header and rows are separate grids and would
+   auto-size their max-content tracks differently). minmax(0,1fr) lets
+   property / API key shrink when the window narrows. */
 .babylon-preset-th,
 .babylon-preset-row {
 	display: grid;
-	grid-template-columns: 36px 1fr 1fr 80px 36px auto;
+	grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr) 120px 56px auto;
 	align-items: center;
 	gap: var(--size-2-3);
 }
 
+/* header strip: rows are inset by margin + padding, so give the header the
+   same inset (margin + horizontal padding) AND a transparent border matching
+   the row's 1px border. Otherwise the row grid's content box is 2px narrower
+   than the header's (rows carry a visible border) and the 1fr columns resolve
+   to different widths, shifting type / sync / actions out of line. */
 .babylon-preset-th {
+	margin: 0 var(--size-2-2);
+	border: 1px solid transparent;
 	font-size: 0.72em;
 	font-weight: 600;
 	text-transform: uppercase;
@@ -1277,13 +1286,43 @@
 	padding: var(--size-2-2) var(--size-2-2) var(--size-2-1);
 }
 
-.babylon-preset-th-sync {
+/* per-column header alignment mirrors the row cells below; nowrap keeps the
+   labels on one line (the max-content tracks give them room) */
+.babylon-preset-th .babylon-preset-th-move,
+.babylon-preset-th .babylon-preset-th-sync {
 	text-align: center;
+	white-space: nowrap;
 }
 
-.babylon-preset-th-actions {
+.babylon-preset-th .babylon-preset-th-property {
+	text-align: left;
+	white-space: nowrap;
+}
+
+/* api key label nudged right to sit over its input */
+.babylon-preset-th .babylon-preset-th-apikey {
+	text-align: left;
+	white-space: nowrap;
+	padding-left: 5px;
+}
+
+/* type / sync labels need a nudge right to sit over their controls */
+.babylon-preset-th .babylon-preset-th-type {
+	text-align: left;
+	white-space: nowrap;
+	padding-left: 5px;
+}
+
+.babylon-preset-th .babylon-preset-th-sync {
+	text-align: center;
+	white-space: nowrap;
+	padding-left: 15px;
+}
+
+.babylon-preset-th .babylon-preset-th-actions {
 	text-align: right;
-	padding-right: var(--size-2-2);
+	white-space: nowrap;
+	padding-left: 5px;
 }
 
 /* field rows: card-style with background + border */
@@ -1310,6 +1349,7 @@
 .babylon-preset-property {
 	grid-column: 2;
 	width: 100%;
+	min-width: 0;
 	height: var(--input-height);
 	padding: 0 var(--size-2-2);
 	border-radius: var(--radius-s);
