@@ -1119,17 +1119,51 @@
 }
 
 /* name + template fields share the native settings-group box styling,
-   matching the collapsible sections in the plugin settings menu */
+   matching the collapsible sections in the plugin settings menu.
+   Root cause: Obsidian's .setting-group resolves its cross-size from
+   content (fit-content), so in this flex column it shrinks narrower than
+   the fields frame. Pin all three width axes so no native constraint can
+   squeeze it -- box-sizing keeps the 1px border inside the width */
 .babylon-preset-config-box {
 	background-color: var(--background-primary-alt);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
 	overflow: hidden;
+	width: 100%;
+	min-width: 100%;
+	max-width: 100%;
+	align-self: stretch;
+	box-sizing: border-box;
 }
 
 .babylon-preset-config-box > .setting-items {
 	background: transparent;
 	border: none;
+	padding-left: 0;
+	padding-right: 0;
+}
+
+/* align rows with the fields frame content: same side inset as the
+   "Fields" header; rows fill the full box width */
+.babylon-preset-config-box .setting-item {
+	width: 100%;
+	padding-left: var(--size-4-2);
+	padding-right: var(--size-4-2);
+	border-radius: 0;
+}
+
+/* name row is a heading (like the Enable sync group header): bold title
+   with a muted, smaller description below it */
+.babylon-preset-config-box .setting-item.babylon-preset-name-heading .setting-item-name {
+	font-size: 1.1em;
+	font-weight: 600;
+}
+
+.babylon-preset-config-box .setting-item.babylon-preset-name-heading .setting-item-description {
+	font-weight: 400;
+	font-size: 0.85em;
+	line-height: 1.4;
+	color: var(--text-muted);
 }
 
 /* create-template button: proper bordered button to the left of the field */
@@ -1167,10 +1201,8 @@
 	border-radius: var(--radius-m);
 	overflow: hidden;
 	background: var(--background-primary);
-}
-
-.babylon-preset-fields-list {
-	padding: 0;
+	width: 100%;
+	box-sizing: border-box;
 }
 
 /* fields header: title + add button on one line */

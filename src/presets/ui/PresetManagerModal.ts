@@ -423,8 +423,10 @@ export class PresetManagerModal extends Modal {
 		configGroup.createDiv({ cls: 'setting-group-search', attr: { tabindex: '-1' } });
 		const configBody = configGroup.createDiv({ cls: 'setting-items' });
 
-		// name
+		// name - heading-styled row (title + desc) like the Enable sync group
+		// header, but keeps its text input in the control half
 		const nameSetting = new Setting(configBody).setName(tr('preset-name')).setDesc(tr('preset-name-desc'));
+		nameSetting.settingEl.addClass('babylon-preset-name-heading');
 		nameSetting.descEl.createDiv({ cls: 'babylon-preset-name-error hidden' });
 		let nameInput: HTMLInputElement | null = null;
 		nameSetting.addText((text) => {
